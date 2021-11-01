@@ -34,9 +34,11 @@ static uint8_t nuc980_boot_flash[32*1024*1024];
 /*                             SYSTEM CONTROLLER                             */
 /*****************************************************************************/
 
-/*------------------------------- SYS MACROS --------------------------------*/
+/*---------------------------- SYS MODULE NAME ------------------------------*/
 
 #define TYPE_NUC980_SYS "nuc980-sys"
+
+/*----------------------------- SYS REGISTERS -------------------------------*/
 
 #define REG_SYS_PDID       0x000
 #define REG_SYS_PWRON      0x004
@@ -71,7 +73,10 @@ static uint8_t nuc980_boot_flash[32*1024*1024];
 #define REG_SYS_MFP_GPH_H  0x0AC
 #define REG_SYS_MFP_GPI_L  0x0B0
 #define REG_SYS_MFP_GPI_H  0x0B4
-#define REG_SYS_DDR_DS_CR  0x0E0
+#define REG_SYS_DDR_DSCTL  0x0F0
+#define REG_SYS_GPBL_DSCTL 0x0F4
+#define REG_SYS_PORDISCR   0x100
+#define REG_SYS_RSTDEBCTL  0x10C
 #define REG_SYS_WPCTL      0x1FC
 
 /*---------------------------- SYS DATATYPES --------------------------------*/
@@ -91,9 +96,10 @@ static uint64_t nuc980_sys_read(void *opaque, hwaddr addr, unsigned size)
     NUC980SYSState *sys = opaque;
     uint64_t        ret = 0;
 
-    ret = sys->regs[(addr>>2)&0xFF];
-
     switch(addr) {
+      case REG_SYS_PDID:
+        break;
+
       case REG_SYS_PWRON:
         /* boot source:          0b10  (NAND flash) 
          * QSPI clock:           0b0   (37.5MHz)
@@ -109,10 +115,48 @@ static uint64_t nuc980_sys_read(void *opaque, hwaddr addr, unsigned size)
         ret = 0x004003F2;
         break;
 
+      case REG_SYS_ARBCON:
+      case REG_SYS_LVRDCR:
+      case REG_SYS_MISCFCR:
+      case REG_SYS_MISCIER:
+      case REG_SYS_MISCISR:
+      case REG_SYS_ROMSUM0:
+      case REG_SYS_ROMSUM1:
+      case REG_SYS_WKUPSER:
+      case REG_SYS_WKUPSSR:
+      case REG_SYS_AHBIPRST:
+      case REG_SYS_APBIPRST0:
+      case REG_SYS_APBIPRST1:
+      case REG_SYS_RSTSTS:
+      case REG_SYS_MFP_GPA_L:
+      case REG_SYS_MFP_GPA_H:
+      case REG_SYS_MFP_GPB_L:
+      case REG_SYS_MFP_GPB_H:
+      case REG_SYS_MFP_GPC_L:
+      case REG_SYS_MFP_GPC_H:
+      case REG_SYS_MFP_GPD_L:
+      case REG_SYS_MFP_GPD_H:
+      case REG_SYS_MFP_GPE_L:
+      case REG_SYS_MFP_GPE_H:
+      case REG_SYS_MFP_GPF_L:
+      case REG_SYS_MFP_GPF_H:
+      case REG_SYS_MFP_GPG_L:
+      case REG_SYS_MFP_GPG_H:
+      case REG_SYS_MFP_GPH_L:
+      case REG_SYS_MFP_GPH_H:
+      case REG_SYS_MFP_GPI_L:
+      case REG_SYS_MFP_GPI_H:
+      case REG_SYS_DDR_DSCTL:
+      case REG_SYS_GPBL_DSCTL:
+      case REG_SYS_PORDISCR:
+      case REG_SYS_RSTDEBCTL:
+        ret = sys->regs[(addr>>2)&0xFF];
+        break;
+
       case REG_SYS_WPCTL:
         ret = 1;
         break;
-        
+
       default:
         error_report("SYS RD: 0x%08lX --> 0x%08lX", sys->iomem.addr + addr, ret);
         break;
@@ -125,9 +169,54 @@ static void nuc980_sys_write(void *opaque, hwaddr addr, uint64_t value, unsigned
 {
     NUC980SYSState *sys = opaque;
 
-    sys->regs[(addr>>2)&0xFF] = value;
-
     switch(addr) {
+      case REG_SYS_PDID:
+        break;
+
+      case REG_SYS_PWRON:
+        break;
+
+      case REG_SYS_ARBCON:
+      case REG_SYS_LVRDCR:
+      case REG_SYS_MISCFCR:
+      case REG_SYS_MISCIER:
+      case REG_SYS_MISCISR:
+      case REG_SYS_ROMSUM0:
+      case REG_SYS_ROMSUM1:
+      case REG_SYS_WKUPSER:
+      case REG_SYS_WKUPSSR:
+      case REG_SYS_AHBIPRST:
+      case REG_SYS_APBIPRST0:
+      case REG_SYS_APBIPRST1:
+      case REG_SYS_RSTSTS:
+      case REG_SYS_MFP_GPA_L:
+      case REG_SYS_MFP_GPA_H:
+      case REG_SYS_MFP_GPB_L:
+      case REG_SYS_MFP_GPB_H:
+      case REG_SYS_MFP_GPC_L:
+      case REG_SYS_MFP_GPC_H:
+      case REG_SYS_MFP_GPD_L:
+      case REG_SYS_MFP_GPD_H:
+      case REG_SYS_MFP_GPE_L:
+      case REG_SYS_MFP_GPE_H:
+      case REG_SYS_MFP_GPF_L:
+      case REG_SYS_MFP_GPF_H:
+      case REG_SYS_MFP_GPG_L:
+      case REG_SYS_MFP_GPG_H:
+      case REG_SYS_MFP_GPH_L:
+      case REG_SYS_MFP_GPH_H:
+      case REG_SYS_MFP_GPI_L:
+      case REG_SYS_MFP_GPI_H:
+      case REG_SYS_DDR_DSCTL:
+      case REG_SYS_GPBL_DSCTL:
+      case REG_SYS_PORDISCR:
+      case REG_SYS_RSTDEBCTL:
+        sys->regs[(addr>>2)&0xFF] = value;
+        break;
+
+      case REG_SYS_WPCTL:
+        break;
+
       default:
         error_report("SYS WR: 0x%08lX <-- 0x%08lX", sys->iomem.addr + addr, value);
         break;
@@ -171,7 +260,7 @@ static const TypeInfo nuc980_sys_type = {
 /*                             CLOCK CONTROLLER                              */
 /*****************************************************************************/
 
-/*------------------------------- CLK MACROS --------------------------------*/
+/*--------------------------- CLK MODULE NAME -------------------------------*/
 
 #define TYPE_NUC980_CLK "nuc980-clk"
 
@@ -193,7 +282,7 @@ static uint64_t nuc980_clk_read(void *opaque, hwaddr addr, unsigned size)
     uint64_t        ret = 0;
 
     ret = clk->regs[(addr>>2)&31];
-    error_report("CLK RD: 0x%08lX --> 0x%08lX", clk->iomem.addr + addr, ret);
+    //error_report("CLK RD: 0x%08lX --> 0x%08lX", clk->iomem.addr + addr, ret);
 
     return ret;
 }
@@ -203,7 +292,7 @@ static void nuc980_clk_write(void *opaque, hwaddr addr, uint64_t value, unsigned
     NUC980CLKState *clk = opaque;
 
     clk->regs[(addr>>2)&31] = value;
-    error_report("CLK WR: 0x%08lX <-- 0x%08lX", clk->iomem.addr + addr, value);
+    //error_report("CLK WR: 0x%08lX <-- 0x%08lX", clk->iomem.addr + addr, value);
 }
 
 static void nuc980_clk_instance_init(Object *obj)
@@ -243,9 +332,11 @@ static const TypeInfo nuc980_clk_type = {
 /*                          SDRAM INTERFACE CONTROLLER                       */
 /*****************************************************************************/
 
-/*------------------------------- SDR MACROS --------------------------------*/
+/*----------------------------- SDR MODULE NAME -----------------------------*/
 
 #define TYPE_NUC980_SDR "nuc980-sdr"
+
+/*----------------------------- SDR REGISTERS -------------------------------*/
 
 #define REG_SDR_OPMCTL     0x000
 #define REG_SDR_CMD        0x004
@@ -344,12 +435,647 @@ static const TypeInfo nuc980_sdr_type = {
 };
 
 /*****************************************************************************/
+/*                              IRQ CONTROLLER                               */
+/*****************************************************************************/
+
+/*---------------------------- PIC MODULE NAME ------------------------------*/
+
+#define TYPE_NUC980_PIC "nuc980-pic"
+
+/*----------------------------- PIC REGISTERS -------------------------------*/
+
+#define REG_PIC_SRC00    0x000
+#define REG_PIC_SRC01    0x004
+#define REG_PIC_SRC02    0x008
+#define REG_PIC_SRC03    0x00C
+#define REG_PIC_SRC04    0x010
+#define REG_PIC_SRC05    0x014
+#define REG_PIC_SRC06    0x018
+#define REG_PIC_SRC07    0x01C
+#define REG_PIC_SRC08    0x020
+#define REG_PIC_SRC09    0x024
+#define REG_PIC_SRC10    0x028
+#define REG_PIC_SRC11    0x02C
+#define REG_PIC_SRC12    0x030
+#define REG_PIC_SRC13    0x034
+#define REG_PIC_SRC14    0x038
+#define REG_PIC_SRC15    0x03C
+#define REG_PIC_RAW0     0x100
+#define REG_PIC_RAW1     0x104
+#define REG_PIC_IS0      0x110
+#define REG_PIC_IS1      0x114
+#define REG_PIC_IRQ      0x120
+#define REG_PIC_FIQ      0x124
+#define REG_PIC_IE0      0x128
+#define REG_PIC_IE1      0x12C
+#define REG_PIC_IEN0     0x130
+#define REG_PIC_IEN1     0x134
+#define REG_PIC_IDIS0    0x138
+#define REG_PIC_IDIS1    0x13C
+#define REG_PIC_IRQRST   0x150
+#define REG_PIC_FIQRST   0x154
+
+/*---------------------------- PIC DATATYPES --------------------------------*/
+
+OBJECT_DECLARE_SIMPLE_TYPE(NUC980PICState, NUC980_PIC)
+
+struct NUC980PICState {
+    SysBusDevice  parent_obj;
+    MemoryRegion  iomem;
+    qemu_irq      irq[2];
+    uint64_t      int_ien;
+    uint64_t      int_sts;
+    uint8_t       irq_src;
+    uint8_t       fiq_src;
+    uint8_t       irq_pin;
+    uint8_t       fiq_pin;
+};
+
+/*----------------------------- PIC FUNCTIONS -------------------------------*/
+
+static void nuc980_pic_update(void *opaque)
+{
+    NUC980PICState *pic = opaque;  
+    int             i   = 0; 
+
+    /* should there be any IRQ to CPU? */
+    if (pic->int_sts) {
+      for (i = 0; i < 64; i++) {
+        if (pic->int_sts & (1UL<<i)) {
+          pic->irq_src = i;
+        }
+      }
+      if (pic->irq_pin == 0) {
+        qemu_set_irq(pic->irq[0], 1);
+        pic->irq_pin = 1;
+        //printf("IRQ SOURCE: %d\n", pic->irq_src);
+      }
+    } else {
+      pic->irq_src = 0;
+      if (pic->irq_pin == 1) {
+        qemu_set_irq(pic->irq[0], 0);
+        pic->irq_pin = 0;
+        //printf("IRQ CLEARED\n");
+      }    
+    }
+}
+
+static void nuc980_pic_irq(void *opaque, int irq, int level)
+{
+    NUC980PICState *pic = opaque;
+
+    if (level == 0) {
+      pic->int_sts &= ~(1UL<<irq);
+    } else {
+      pic->int_sts |= (1UL<<irq) & pic->int_ien;
+    }
+    //printf("IRQ: %d %d 0x%016lX 0x%016lX\n", irq, level, pic->int_sts, pic->int_ien);
+
+    nuc980_pic_update(pic);
+}
+
+static uint64_t nuc980_pic_read(void *opaque, hwaddr addr, unsigned size)
+{
+    NUC980PICState *pic = opaque;
+    uint64_t        ret = 0;
+
+    switch(addr) {
+      case REG_PIC_RAW0:
+        ret = (pic->int_sts>>0) & 0xFFFFFFFF;
+        break;
+
+      case REG_PIC_RAW1:
+        ret = (pic->int_sts>>32) & 0xFFFFFFFF;
+        break;
+
+      case REG_PIC_IS0:
+        ret = (pic->int_sts>>0) & 0xFFFFFFFF;
+        break;
+
+      case REG_PIC_IS1:
+        ret = (pic->int_sts>>32) & 0xFFFFFFFF;
+        break;
+
+      case REG_PIC_IRQ:
+        ret = pic->irq_src;
+        break;
+
+      case REG_PIC_FIQ:
+        ret = pic->fiq_src;
+        break;
+
+      case REG_PIC_IE0:
+        ret = (pic->int_ien>>0) & 0xFFFFFFFF;
+        break;
+
+      case REG_PIC_IE1:
+        ret = (pic->int_ien>>32) & 0xFFFFFFFF;
+        break;
+
+      default:
+        error_report("PIC RD: 0x%08lX --> 0x%08lX", pic->iomem.addr + addr, ret);
+        break;
+    }
+
+    return ret;
+}
+
+static void nuc980_pic_write(void *opaque, hwaddr addr, uint64_t value, unsigned size)
+{
+    NUC980PICState *pic = opaque;
+
+    switch(addr) {
+      case REG_PIC_IE0:
+        pic->int_ien = (pic->int_ien & 0xFFFFFFFF00000000ULL) | (value<< 0);
+        pic->int_sts &= pic->int_ien;
+        break;
+
+      case REG_PIC_IE1:
+        pic->int_ien = (pic->int_ien & 0x00000000FFFFFFFFULL) | (value<<32);
+        pic->int_sts &= pic->int_ien;
+        break;
+
+      case REG_PIC_IEN0:
+        pic->int_ien |= (value<< 0);
+        pic->int_sts &= pic->int_ien;
+        break;
+
+      case REG_PIC_IEN1:
+        pic->int_ien |= (value<<32);
+        pic->int_sts &= pic->int_ien;
+        break;
+
+      case REG_PIC_IDIS0:
+        pic->int_ien &= ~(value<< 0);
+        pic->int_sts &= pic->int_ien;
+        break;
+
+      case REG_PIC_IDIS1:
+        pic->int_ien &= ~(value<<32);
+        pic->int_sts &= pic->int_ien;
+        break;
+
+      case REG_PIC_IRQRST:  
+        nuc980_pic_update(pic);
+        break;
+
+      case REG_PIC_FIQRST:
+        break;
+
+      default:
+        error_report("PIC WR: 0x%08lX <-- 0x%08lX", pic->iomem.addr + addr, value);
+        break;
+    }
+}
+
+static void nuc980_pic_instance_init(Object *obj)
+{
+    NUC980PICState *pic = NUC980_PIC(obj);
+    
+    static const MemoryRegionOps pic_ops = {
+      .read       = nuc980_pic_read,
+      .write      = nuc980_pic_write,
+      .endianness = DEVICE_NATIVE_ENDIAN,
+    };
+
+    memory_region_init_io(&pic->iomem, obj, &pic_ops, pic, "pic", 0x1000);
+
+    sysbus_init_mmio(SYS_BUS_DEVICE(pic), &pic->iomem);
+
+    qdev_init_gpio_in (DEVICE(pic), nuc980_pic_irq, 64);
+    qdev_init_gpio_out(DEVICE(pic), pic->irq,       2);
+}
+
+static void nuc980_pic_class_init(ObjectClass *obj_class, void *data)
+{
+    DeviceClass *dev_class = DEVICE_CLASS(obj_class);
+
+    dev_class->desc  = "NUC980 PIC Controller";
+    dev_class->reset = NULL;
+}
+
+/*------------------------------ PIC TYPE -----------------------------------*/
+
+static const TypeInfo nuc980_pic_type = {
+    .name          = TYPE_NUC980_PIC,
+    .parent        = TYPE_SYS_BUS_DEVICE,
+    .instance_size = sizeof(NUC980PICState),
+    .instance_init = nuc980_pic_instance_init,
+    .class_init    = nuc980_pic_class_init,
+};
+
+/*****************************************************************************/
+/*                               GPIO DRIVER                                 */
+/*****************************************************************************/
+
+/*---------------------------- GPI MODULE NAME ------------------------------*/
+
+#define TYPE_NUC980_GPI "nuc980-gpi"
+
+/*----------------------------- GPI REGISTERS -------------------------------*/
+
+#define REG_GPI_MODE       0x000
+#define REG_GPI_DINOFF     0x004
+#define REG_GPI_DOUT       0x008
+#define REG_GPI_DATMSK     0x00C
+#define REG_GPI_PIN        0x010
+#define REG_GPI_DBEN       0x014
+#define REG_GPI_INTTYPE    0x018
+#define REG_GPI_INTEN      0x01C
+#define REG_GPI_INTSRC     0x020
+#define REG_GPI_SMTEN      0x024
+#define REG_GPI_SLEWCTL    0x028
+#define REG_GPI_PUSEL      0x030
+
+#define REG_GPI_DATA0      0x000
+#define REG_GPI_DATA1      0x004
+#define REG_GPI_DATA2      0x008
+#define REG_GPI_DATA3      0x00C
+#define REG_GPI_DATA4      0x010
+#define REG_GPI_DATA5      0x014
+#define REG_GPI_DATA6      0x018
+#define REG_GPI_DATA7      0x01C
+#define REG_GPI_DATA8      0x020
+#define REG_GPI_DATA9      0x024
+#define REG_GPI_DATA10     0x028
+#define REG_GPI_DATA11     0x02C
+#define REG_GPI_DATA12     0x030
+#define REG_GPI_DATA13     0x034
+#define REG_GPI_DATA14     0x038
+#define REG_GPI_DATA15     0x03C
+
+/*---------------------------- GPI DATATYPES --------------------------------*/
+
+OBJECT_DECLARE_SIMPLE_TYPE(NUC980GPIState, NUC980_GPI)
+
+struct NUC980GPIState {
+    SysBusDevice  parent_obj;
+    MemoryRegion  iomem[2];
+    qemu_irq      irq;
+};
+
+/*----------------------------- GPI FUNCTIONS -------------------------------*/
+
+static uint64_t nuc980_gpi_read_reg(void *opaque, hwaddr addr, unsigned size)
+{
+    NUC980GPIState *gpi = opaque;
+    uint64_t        ret = 0;
+
+    switch(addr) {
+      case REG_GPI_DINOFF:
+      case REG_GPI_DOUT:
+      case REG_GPI_DATMSK:
+      case REG_GPI_PIN:
+      case REG_GPI_DBEN:
+      case REG_GPI_INTTYPE:
+      case REG_GPI_INTEN:
+      case REG_GPI_INTSRC:
+      case REG_GPI_SMTEN:
+      case REG_GPI_SLEWCTL:
+      case REG_GPI_PUSEL:
+        break;
+
+      default:
+        error_report("GPI RD: 0x%08lX --> 0x%08lX", gpi->iomem[0].addr + addr, ret);
+        break;
+    }
+
+    return ret;
+}
+
+static void nuc980_gpi_write_reg(void *opaque, hwaddr addr, uint64_t value, unsigned size)
+{
+    NUC980GPIState *gpi = opaque;
+
+    switch(addr) {
+      case REG_GPI_DINOFF:
+      case REG_GPI_DOUT:
+      case REG_GPI_DATMSK:
+      case REG_GPI_PIN:
+      case REG_GPI_DBEN:
+      case REG_GPI_INTTYPE:
+      case REG_GPI_INTEN:
+      case REG_GPI_INTSRC:
+      case REG_GPI_SMTEN:
+      case REG_GPI_SLEWCTL:
+      case REG_GPI_PUSEL:
+        break;
+
+      default:
+        error_report("GPI WR: 0x%08lX <-- 0x%08lX", gpi->iomem[0].addr + addr, value);
+        break;
+    }
+}
+
+static uint64_t nuc980_gpi_read_data(void *opaque, hwaddr addr, unsigned size)
+{
+    NUC980GPIState *gpi = opaque;
+    uint64_t        ret = 0;
+
+    switch(addr) {
+      case REG_GPI_DATA0:
+      case REG_GPI_DATA1:
+      case REG_GPI_DATA2:
+      case REG_GPI_DATA3:
+      case REG_GPI_DATA4:
+      case REG_GPI_DATA5:
+      case REG_GPI_DATA6:
+      case REG_GPI_DATA7:
+      case REG_GPI_DATA8:
+      case REG_GPI_DATA9:
+      case REG_GPI_DATA10:
+      case REG_GPI_DATA11:
+      case REG_GPI_DATA12:
+      case REG_GPI_DATA13:
+      case REG_GPI_DATA14:
+      case REG_GPI_DATA15:
+        break;
+
+      default:
+        error_report("GPI RD: 0x%08lX --> 0x%08lX", gpi->iomem[1].addr + addr, ret);
+        break;
+    }
+
+    return ret;
+}
+
+static void nuc980_gpi_write_data(void *opaque, hwaddr addr, uint64_t value, unsigned size)
+{
+    NUC980GPIState *gpi = opaque;
+
+    switch(addr) {
+      case REG_GPI_DATA0:
+      case REG_GPI_DATA1:
+      case REG_GPI_DATA2:
+      case REG_GPI_DATA3:
+      case REG_GPI_DATA4:
+      case REG_GPI_DATA5:
+      case REG_GPI_DATA6:
+      case REG_GPI_DATA7:
+      case REG_GPI_DATA8:
+      case REG_GPI_DATA9:
+      case REG_GPI_DATA10:
+      case REG_GPI_DATA11:
+      case REG_GPI_DATA12:
+      case REG_GPI_DATA13:
+      case REG_GPI_DATA14:
+      case REG_GPI_DATA15:
+        break;
+
+      default:
+        error_report("GPI WR: 0x%08lX <-- 0x%08lX", gpi->iomem[1].addr + addr, value);
+        break;
+    }
+}
+
+static void nuc980_gpi_instance_init(Object *obj)
+{
+    NUC980GPIState *gpi = NUC980_GPI(obj);
+    
+    static const MemoryRegionOps gpi_ops0 = {
+      .read       = nuc980_gpi_read_reg,
+      .write      = nuc980_gpi_write_reg,
+      .endianness = DEVICE_NATIVE_ENDIAN,
+    };
+    
+    static const MemoryRegionOps gpi_ops1 = {
+      .read       = nuc980_gpi_read_data,
+      .write      = nuc980_gpi_write_data,
+      .endianness = DEVICE_NATIVE_ENDIAN,
+    };
+
+    memory_region_init_io(&gpi->iomem[0], obj, &gpi_ops0, gpi, "gpi", 0x40);
+    memory_region_init_io(&gpi->iomem[1], obj, &gpi_ops1, gpi, "gpi", 0x40);
+
+    sysbus_init_mmio(SYS_BUS_DEVICE(gpi), &gpi->iomem[0]);
+    sysbus_init_mmio(SYS_BUS_DEVICE(gpi), &gpi->iomem[1]);
+}
+
+static void nuc980_gpi_class_init(ObjectClass *obj_class, void *data)
+{
+    DeviceClass *dev_class = DEVICE_CLASS(obj_class);
+
+    dev_class->desc  = "NUC980 GPI Controller";
+    dev_class->reset = NULL;
+}
+
+/*------------------------------ GPI TYPE -----------------------------------*/
+
+static const TypeInfo nuc980_gpi_type = {
+    .name          = TYPE_NUC980_GPI,
+    .parent        = TYPE_SYS_BUS_DEVICE,
+    .instance_size = sizeof(NUC980GPIState),
+    .instance_init = nuc980_gpi_instance_init,
+    .class_init    = nuc980_gpi_class_init,
+};
+
+/*****************************************************************************/
+/*                             Ethernet DRIVER                               */
+/*****************************************************************************/
+
+/*---------------------------- ETH MODULE NAME ------------------------------*/
+
+#define TYPE_NUC980_ETH "nuc980-eth"
+
+/*---------------------------- ETH DATATYPES --------------------------------*/
+
+OBJECT_DECLARE_SIMPLE_TYPE(NUC980ETHState, NUC980_ETH)
+
+struct NUC980ETHState {
+    SysBusDevice  parent_obj;
+    MemoryRegion  iomem;
+    qemu_irq      irq[2];
+};
+
+/*----------------------------- ETH FUNCTIONS -------------------------------*/
+
+static uint64_t nuc980_eth_read(void *opaque, hwaddr addr, unsigned size)
+{
+    NUC980ETHState *eth = opaque;
+    uint64_t        ret = 0;
+
+    switch(addr) {
+      default:
+        (void)&eth;
+        //error_report("ETH RD: 0x%08lX --> 0x%08lX", eth->iomem.addr + addr, ret);
+        break;
+    }
+
+
+    return ret;
+}
+
+static void nuc980_eth_write(void *opaque, hwaddr addr, uint64_t value, unsigned size)
+{
+    NUC980ETHState *eth = opaque;
+
+    switch(addr) {
+      default:
+        (void)&eth;
+        //error_report("ETH WR: 0x%08lX <-- 0x%08lX", eth->iomem.addr + addr, value);
+        break;
+    }
+
+}
+
+static void nuc980_eth_instance_init(Object *obj)
+{
+    NUC980ETHState *eth = NUC980_ETH(obj);
+    
+    static const MemoryRegionOps eth_ops = {
+      .read       = nuc980_eth_read,
+      .write      = nuc980_eth_write,
+      .endianness = DEVICE_NATIVE_ENDIAN,
+    };
+
+    memory_region_init_io(&eth->iomem, obj, &eth_ops, eth, "eth", 0x1000);
+
+    sysbus_init_mmio(SYS_BUS_DEVICE(eth), &eth->iomem);
+}
+
+static void nuc980_eth_class_init(ObjectClass *obj_class, void *data)
+{
+    DeviceClass *dev_class = DEVICE_CLASS(obj_class);
+
+    dev_class->desc  = "NUC980 ETH Controller";
+    dev_class->reset = NULL;
+}
+
+/*------------------------------ ETH TYPE -----------------------------------*/
+
+static const TypeInfo nuc980_eth_type = {
+    .name          = TYPE_NUC980_ETH,
+    .parent        = TYPE_SYS_BUS_DEVICE,
+    .instance_size = sizeof(NUC980ETHState),
+    .instance_init = nuc980_eth_instance_init,
+    .class_init    = nuc980_eth_class_init,
+};
+
+
+/*****************************************************************************/
+/*                               USB DRIVER                                  */
+/*****************************************************************************/
+
+/*---------------------------- USB MODULE NAME ------------------------------*/
+
+#define TYPE_NUC980_USB "nuc980-usb"
+
+/*---------------------------- USB DATATYPES --------------------------------*/
+
+OBJECT_DECLARE_SIMPLE_TYPE(NUC980USBState, NUC980_USB)
+
+struct NUC980USBState {
+    SysBusDevice  parent_obj;
+    MemoryRegion  iomem[2];
+    qemu_irq      irq[2];
+};
+
+/*----------------------------- USB FUNCTIONS -------------------------------*/
+
+static uint64_t nuc980_usb_read_ehci(void *opaque, hwaddr addr, unsigned size)
+{
+    NUC980USBState *usb = opaque;
+    uint64_t        ret = 0;
+
+    switch(addr) {
+      default:
+        (void)&usb;
+        //error_report("USB RD: 0x%08lX --> 0x%08lX", usb->iomem[0].addr + addr, ret);
+        break;
+    }
+
+    return ret;
+}
+
+static void nuc980_usb_write_ehci(void *opaque, hwaddr addr, uint64_t value, unsigned size)
+{
+    NUC980USBState *usb = opaque;
+
+    switch(addr) {
+      default:
+        (void)&usb;
+        //error_report("USB WR: 0x%08lX <-- 0x%08lX", usb->iomem[0].addr + addr, value);
+        break;
+    }
+}
+
+static uint64_t nuc980_usb_read_ohci(void *opaque, hwaddr addr, unsigned size)
+{
+    NUC980USBState *usb = opaque;
+    uint64_t        ret = 0;
+
+    switch(addr) {
+      default:
+        (void)&usb;
+        //error_report("USB RD: 0x%08lX --> 0x%08lX", usb->iomem[1].addr + addr, ret);
+        break;
+    }
+
+    return ret;
+}
+
+static void nuc980_usb_write_ohci(void *opaque, hwaddr addr, uint64_t value, unsigned size)
+{
+    NUC980USBState *usb = opaque;
+
+    switch(addr) {
+      default:
+        (void)&usb;
+        //error_report("USB WR: 0x%08lX <-- 0x%08lX", usb->iomem[1].addr + addr, value);
+        break;
+    }
+}
+
+static void nuc980_usb_instance_init(Object *obj)
+{
+    NUC980USBState *usb = NUC980_USB(obj);
+    
+    static const MemoryRegionOps usb_ops0 = {
+      .read       = nuc980_usb_read_ehci,
+      .write      = nuc980_usb_write_ehci,
+      .endianness = DEVICE_NATIVE_ENDIAN,
+    };
+    
+    static const MemoryRegionOps usb_ops1 = {
+      .read       = nuc980_usb_read_ohci,
+      .write      = nuc980_usb_write_ohci,
+      .endianness = DEVICE_NATIVE_ENDIAN,
+    };
+
+    memory_region_init_io(&usb->iomem[0], obj, &usb_ops0, usb, "usb", 0x1000);
+    memory_region_init_io(&usb->iomem[1], obj, &usb_ops1, usb, "usb", 0x1000);
+
+    sysbus_init_mmio(SYS_BUS_DEVICE(usb), &usb->iomem[0]);
+    sysbus_init_mmio(SYS_BUS_DEVICE(usb), &usb->iomem[1]);
+}
+
+static void nuc980_usb_class_init(ObjectClass *obj_class, void *data)
+{
+    DeviceClass *dev_class = DEVICE_CLASS(obj_class);
+
+    dev_class->desc  = "NUC980 USB Controller";
+    dev_class->reset = NULL;
+}
+
+/*------------------------------ USB TYPE -----------------------------------*/
+
+static const TypeInfo nuc980_usb_type = {
+    .name          = TYPE_NUC980_USB,
+    .parent        = TYPE_SYS_BUS_DEVICE,
+    .instance_size = sizeof(NUC980USBState),
+    .instance_init = nuc980_usb_instance_init,
+    .class_init    = nuc980_usb_class_init,
+};
+
+/*****************************************************************************/
 /*                         INTERNAL NAND FLASH DRIVER                        */
 /*****************************************************************************/
 
-/*------------------------------- FMI MACROS --------------------------------*/
+/*---------------------------- FMI MODULE NAME ------------------------------*/
 
 #define TYPE_NUC980_FMI "nuc980-fmi"
+
+/*----------------------------- FMI REGISTERS -------------------------------*/
 
 #define FMI_DMACTL       0x400
 #define FMI_DMASA        0x408
@@ -390,6 +1116,7 @@ OBJECT_DECLARE_SIMPLE_TYPE(NUC980FMIState, NUC980_FMI)
 struct NUC980FMIState {
     SysBusDevice    parent_obj;
     MemoryRegion    iomem;
+    qemu_irq        irq;
     uint32_t        dma_enable;
     uint32_t        dma_addr;
     uint32_t        nand_ctrl;
@@ -666,234 +1393,14 @@ static const TypeInfo nuc980_fmi_type = {
 };
 
 /*****************************************************************************/
-/*                              IRQ CONTROLLER                               */
-/*****************************************************************************/
-
-/*------------------------------- AIC MACROS --------------------------------*/
-
-#define TYPE_NUC980_AIC "nuc980-aic"
-
-#define REG_AIC_SRC00    0x000
-#define REG_AIC_SRC01    0x004
-#define REG_AIC_SRC02    0x008
-#define REG_AIC_SRC03    0x00C
-#define REG_AIC_SRC04    0x010
-#define REG_AIC_SRC05    0x014
-#define REG_AIC_SRC06    0x018
-#define REG_AIC_SRC07    0x01C
-#define REG_AIC_SRC08    0x020
-#define REG_AIC_SRC09    0x024
-#define REG_AIC_SRC10    0x028
-#define REG_AIC_SRC11    0x02C
-#define REG_AIC_SRC12    0x030
-#define REG_AIC_SRC13    0x034
-#define REG_AIC_SRC14    0x038
-#define REG_AIC_SRC15    0x03C
-#define REG_AIC_RAW0     0x100
-#define REG_AIC_RAW1     0x104
-#define REG_AIC_IS0      0x110
-#define REG_AIC_IS1      0x114
-#define REG_AIC_IRQ      0x120
-#define REG_AIC_FIQ      0x124
-#define REG_AIC_IE0      0x128
-#define REG_AIC_IE1      0x12C
-#define REG_AIC_IEN0     0x130
-#define REG_AIC_IEN1     0x134
-#define REG_AIC_IDIS0    0x138
-#define REG_AIC_IDIS1    0x13C
-#define REG_AIC_IRQRST   0x150
-#define REG_AIC_FIQRST   0x154
-
-/*---------------------------- AIC DATATYPES --------------------------------*/
-
-OBJECT_DECLARE_SIMPLE_TYPE(NUC980AICState, NUC980_AIC)
-
-struct NUC980AICState {
-    SysBusDevice  parent_obj;
-    MemoryRegion  iomem;
-    qemu_irq      irq[2];
-    uint64_t      int_ien;
-    uint64_t      int_sts;
-    uint8_t       irq_src;
-    uint8_t       fiq_src;
-    uint8_t       irq_pin;
-    uint8_t       fiq_pin;
-};
-
-/*----------------------------- AIC FUNCTIONS -------------------------------*/
-
-static void nuc980_aic_update(void *opaque)
-{
-    NUC980AICState *aic = opaque;  
-    int             i   = 0; 
-
-    /* should there be any IRQ to CPU? */
-    if (aic->int_sts) {
-      for (i = 0; i < 64; i++) {
-        if (aic->int_sts & (1UL<<i)) {
-          aic->irq_src = i;
-        }
-      }
-      if (aic->irq_pin == 0) {
-        qemu_set_irq(aic->irq[0], 1);
-        aic->irq_pin = 1;
-        //printf("IRQ SOURCE: %d\n", aic->irq_src);
-      }
-    } else {
-      aic->irq_src = 0;
-      if (aic->irq_pin == 1) {
-        qemu_set_irq(aic->irq[0], 0);
-        aic->irq_pin = 0;
-        //printf("IRQ CLEARED\n");
-      }    
-    }
-}
-
-static void nuc980_aic_irq(void *opaque, int irq, int level)
-{
-    NUC980AICState *aic = opaque;
-
-    if (level == 0) {
-      aic->int_sts &= ~(1UL<<irq);
-    } else {
-      aic->int_sts |= (1UL<<irq) & aic->int_ien;
-    }
-    //printf("IRQ: %d %d 0x%016lX 0x%016lX\n", irq, level, aic->int_sts, aic->int_ien);
-
-    nuc980_aic_update(aic);
-}
-
-static uint64_t nuc980_aic_read(void *opaque, hwaddr addr, unsigned size)
-{
-    NUC980AICState *aic = opaque;
-    uint64_t        ret = 0;
-
-    switch(addr) {
-      case REG_AIC_RAW0:
-        ret = (aic->int_sts>>0) & 0xFFFFFFFF;
-        break;
-
-      case REG_AIC_RAW1:
-        ret = (aic->int_sts>>32) & 0xFFFFFFFF;
-        break;
-
-      case REG_AIC_IS0:
-        ret = (aic->int_sts>>0) & 0xFFFFFFFF;
-        break;
-
-      case REG_AIC_IS1:
-        ret = (aic->int_sts>>32) & 0xFFFFFFFF;
-        break;
-
-      case REG_AIC_IRQ:
-        ret = aic->irq_src;
-        break;
-
-      case REG_AIC_FIQ:
-        ret = aic->fiq_src;
-        break;
-
-      case REG_AIC_IE0:
-        ret = (aic->int_ien>>0) & 0xFFFFFFFF;
-        break;
-
-      case REG_AIC_IE1:
-        ret = (aic->int_ien>>32) & 0xFFFFFFFF;
-        break;
-
-      default:
-        error_report("AIC RD: 0x%08lX --> 0x%08lX", aic->iomem.addr + addr, ret);
-        break;
-    }
-
-    return ret;
-}
-
-static void nuc980_aic_write(void *opaque, hwaddr addr, uint64_t value, unsigned size)
-{
-    NUC980AICState *aic = opaque;
-
-    switch(addr) {
-      case REG_AIC_IE0:
-        aic->int_ien = (aic->int_ien & 0xFFFFFFFF00000000ULL) | (value<< 0);
-        break;
-
-      case REG_AIC_IE1:
-        aic->int_ien = (aic->int_ien & 0x00000000FFFFFFFFULL) | (value<<32);
-        break;
-
-      case REG_AIC_IEN0:
-        aic->int_ien |= (value<< 0);
-        break;
-
-      case REG_AIC_IEN1:
-        aic->int_ien |= (value<<32);
-        break;
-
-      case REG_AIC_IDIS0:
-        aic->int_ien &= ~(value<< 0);
-        break;
-
-      case REG_AIC_IDIS1:
-        aic->int_ien &= ~(value<<32);
-        break;
-
-      case REG_AIC_IRQRST:  
-        nuc980_aic_update(aic);
-        break;
-
-      case REG_AIC_FIQRST:
-        break;
-
-      default:
-        error_report("AIC WR: 0x%08lX <-- 0x%08lX", aic->iomem.addr + addr, value);
-        break;
-    }
-}
-
-static void nuc980_aic_instance_init(Object *obj)
-{
-    NUC980AICState *aic = NUC980_AIC(obj);
-    
-    static const MemoryRegionOps aic_ops = {
-      .read       = nuc980_aic_read,
-      .write      = nuc980_aic_write,
-      .endianness = DEVICE_NATIVE_ENDIAN,
-    };
-
-    memory_region_init_io(&aic->iomem, obj, &aic_ops, aic, "aic", 0x1000);
-
-    sysbus_init_mmio(SYS_BUS_DEVICE(aic), &aic->iomem);
-
-    qdev_init_gpio_in (DEVICE(aic), nuc980_aic_irq, 64);
-    qdev_init_gpio_out(DEVICE(aic), aic->irq,       2);
-}
-
-static void nuc980_aic_class_init(ObjectClass *obj_class, void *data)
-{
-    DeviceClass *dev_class = DEVICE_CLASS(obj_class);
-
-    dev_class->desc  = "NUC980 AIC Controller";
-    dev_class->reset = NULL;
-}
-
-/*------------------------------ AIC TYPE -----------------------------------*/
-
-static const TypeInfo nuc980_aic_type = {
-    .name          = TYPE_NUC980_AIC,
-    .parent        = TYPE_SYS_BUS_DEVICE,
-    .instance_size = sizeof(NUC980AICState),
-    .instance_init = nuc980_aic_instance_init,
-    .class_init    = nuc980_aic_class_init,
-};
-
-/*****************************************************************************/
 /*                              RTC CONTROLLER                               */
 /*****************************************************************************/
 
-/*------------------------------- RTC MACROS --------------------------------*/
+/*---------------------------- RTC MODULE NAME ------------------------------*/
 
 #define TYPE_NUC980_RTC "nuc980-rtc"
+
+/*----------------------------- RTC REGISTERS -------------------------------*/
 
 #define REG_RTC_INIT       0x000
 #define REG_RTC_RWEN       0x004
@@ -1017,9 +1524,11 @@ static const TypeInfo nuc980_rtc_type = {
 /*                               TIMER DRIVER                                */
 /*****************************************************************************/
 
-/*------------------------------- TMR MACROS --------------------------------*/
+/*----------------------------- TMR MODULE NAME -----------------------------*/
 
 #define TYPE_NUC980_TMR "nuc980-tmr"
+
+/*----------------------------- TMR REGISTERS -------------------------------*/
 
 #define REG_TMR_CTL     0x000
 #define REG_TMR_PRECNT  0x004
@@ -1187,10 +1696,10 @@ static const TypeInfo nuc980_tmr_type = {
 };
 
 /*****************************************************************************/
-/*                                 SPI DRIVER                                */
+/*                               SPI DRIVER                                  */
 /*****************************************************************************/
 
-/*------------------------------- SPI MACROS --------------------------------*/
+/*--------------------------- SPI MODULE NAME -------------------------------*/
 
 #define TYPE_NUC980_SPI "nuc980-spi"
 
@@ -1271,35 +1780,37 @@ static const TypeInfo nuc980_spi_type = {
 /*                               UART DRIVER                                 */
 /*****************************************************************************/
 
-/*------------------------------- UIC MACROS --------------------------------*/
+/*----------------------------- SER MODULE NAME -----------------------------*/
 
-#define TYPE_NUC980_UIC "nuc980-uic"
+#define TYPE_NUC980_SER "nuc980-ser"
 
-#define REG_UIC_DAT        0x00
-#define REG_UIC_INTEN      0x04
-#define REG_UIC_FIFO       0x08
-#define REG_UIC_LINE       0x0C
-#define REG_UIC_MODEM      0x10
-#define REG_UIC_MODEMSTS   0x14
-#define REG_UIC_FIFOSTS    0x18
-#define REG_UIC_INTSTS     0x1C
-#define REG_UIC_TOUT       0x20
-#define REG_UIC_BAUD       0x24
-#define REG_UIC_IRDA       0x28
-#define REG_UIC_ALTCTL     0x2C
-#define REG_UIC_FUNCSEL    0x30
-#define REG_UIC_LINCTL     0x34
-#define REG_UIC_LINSTS     0x38
-#define REG_UIC_BRCOMP     0x3C
-#define REG_UIC_WKCTL      0x40
-#define REG_UIC_WKSTS      0x44
-#define REG_UIC_DWKCOMP    0x48
+/*------------------------------ SER REGISTERS ------------------------------*/
 
-/*---------------------------- UIC DATATYPES --------------------------------*/
+#define REG_SER_DAT        0x00
+#define REG_SER_INTEN      0x04
+#define REG_SER_FIFO       0x08
+#define REG_SER_LINE       0x0C
+#define REG_SER_MODEM      0x10
+#define REG_SER_MODEMSTS   0x14
+#define REG_SER_FIFOSTS    0x18
+#define REG_SER_INTSTS     0x1C
+#define REG_SER_TOUT       0x20
+#define REG_SER_BAUD       0x24
+#define REG_SER_IRDA       0x28
+#define REG_SER_ALTCTL     0x2C
+#define REG_SER_FUNCSEL    0x30
+#define REG_SER_LINCTL     0x34
+#define REG_SER_LINSTS     0x38
+#define REG_SER_BRCOMP     0x3C
+#define REG_SER_WKCTL      0x40
+#define REG_SER_WKSTS      0x44
+#define REG_SER_DWKCOMP    0x48
 
-OBJECT_DECLARE_SIMPLE_TYPE(NUC980UICState, NUC980_UIC)
+/*---------------------------- SER DATATYPES --------------------------------*/
 
-struct NUC980UICState {
+OBJECT_DECLARE_SIMPLE_TYPE(NUC980SERState, NUC980_SER)
+
+struct NUC980SERState {
     SysBusDevice  parent_obj;
     MemoryRegion  iomem;
     CharBackend   be;
@@ -1316,194 +1827,293 @@ struct NUC980UICState {
     uint32_t      baud;
 };
 
-/*----------------------------- UIC FUNCTIONS -------------------------------*/
+/*----------------------------- SER FUNCTIONS -------------------------------*/
 
-static int nuc980_uic_chardev_canrd(void *opaque)
+static int nuc980_ser_chardev_canrd(void *opaque)
 {
-    NUC980UICState *uic = opaque;
+    NUC980SERState *ser = opaque;
 
-    return (uic->rx_avail == false);
+    return (ser->rx_avail == false);
 }
 
-static void nuc980_uic_chardev_read(void *opaque, const uint8_t *buf, int size)
+static void nuc980_ser_chardev_read(void *opaque, const uint8_t *buf, int size)
 {
-    NUC980UICState *uic = opaque;
+    NUC980SERState *ser = opaque;
 
-    uic->rx_avail = true;
-    uic->rx_data  = buf[0];
+    ser->rx_avail = true;
+    ser->rx_data  = buf[0];
 
-    //qemu_set_irq(uic->irq, 1);
+    if (ser->ien) {
+      qemu_set_irq(ser->irq, 1);
+    }
+
+    ser->intr_sts |= 1;
 }
 
-static void nuc980_uic_chardev_write(void *opaque, const uint8_t *buf, int size)
+static void nuc980_ser_chardev_write(void *opaque, const uint8_t *buf, int size)
 {
-    NUC980UICState *uic = opaque;
+    NUC980SERState *ser = opaque;
 
-    qemu_chr_fe_write(&uic->be, buf, size);
+    qemu_chr_fe_write(&ser->be, buf, size);
+    
+    if (ser->ien) {
+      qemu_set_irq(ser->irq, 1);
+    }
+
+    ser->intr_sts |= 2;
 }
 
-static void nuc980_uic_chardev_event(void *opaque, QEMUChrEvent event)
+static void nuc980_ser_chardev_event(void *opaque, QEMUChrEvent event)
 {
 }
 
-static int nuc980_uic_chardev_canchg(void *opaque)
+static int nuc980_ser_chardev_canchg(void *opaque)
 {
     return 1;
 }
 
-static void nuc980_uic_chardev_attach(NUC980UICState *uic, Chardev *s) {
-    qemu_chr_fe_init(&uic->be, s, &error_abort);
-    qemu_chr_fe_set_handlers(&uic->be,
-                             nuc980_uic_chardev_canrd,
-                             nuc980_uic_chardev_read,
-                             nuc980_uic_chardev_event,
-                             nuc980_uic_chardev_canchg,
-                             uic,
+static void nuc980_ser_chardev_attach(NUC980SERState *ser, Chardev *s) {
+    qemu_chr_fe_init(&ser->be, s, &error_abort);
+    qemu_chr_fe_set_handlers(&ser->be,
+                             nuc980_ser_chardev_canrd,
+                             nuc980_ser_chardev_read,
+                             nuc980_ser_chardev_event,
+                             nuc980_ser_chardev_canchg,
+                             ser,
                              NULL,
                              false);
 }
 
-static uint64_t nuc980_uic_read(void *opaque, hwaddr addr, unsigned size)
+static uint64_t nuc980_ser_read(void *opaque, hwaddr addr, unsigned size)
 {
-    NUC980UICState *uic = opaque;
+    NUC980SERState *ser = opaque;
     uint64_t        ret = 0;
+    
+    qemu_set_irq(ser->irq, 0);
 
     switch(addr) {
-      case REG_UIC_DAT:
-        ret = uic->rx_data;
-        uic->rx_avail = false;
+      case REG_SER_DAT:
+        ret = ser->rx_data;
+        ser->rx_avail = false;
+        ser->intr_sts &= ~1;
         break;
         
-      case REG_UIC_INTEN:
-        ret = uic->ien;
+      case REG_SER_INTEN:
+        ret = ser->ien;
         break;
         
-      case REG_UIC_FIFO:
-        ret = uic->fifo_ctl;
+      case REG_SER_FIFO:
+        ret = ser->fifo_ctl;
         break;
         
-      case REG_UIC_LINE:
-        ret = uic->line_ctl;
+      case REG_SER_LINE:
+        ret = ser->line_ctl;
         break;
         
-      case REG_UIC_MODEM:
-        ret = uic->modm_ctl;
+      case REG_SER_MODEM:
+        ret = ser->modm_ctl;
         break;
         
-      case REG_UIC_MODEMSTS:
-        ret = uic->modm_sts;
+      case REG_SER_MODEMSTS:
+        ret = ser->modm_sts;
         break;
 
-      case REG_UIC_FIFOSTS:
+      case REG_SER_FIFOSTS:
         ret |= (1<<28); // TXEMPTF
         ret |= (1<<22); // TXEMPTY
-        if (!uic->rx_avail) {
+        if (!ser->rx_avail) {
           ret |= (1<<14); // RXEMPTY
         }
         break;
 
-      case REG_UIC_INTSTS:
-        ret = uic->intr_sts;
+      case REG_SER_INTSTS:
+        ret = ser->intr_sts;
         break;
 
-      case REG_UIC_BAUD:
-        ret = uic->baud;
+      case REG_SER_TOUT:
+        break;
+
+      case REG_SER_BAUD:
+        ret = ser->baud;
         break;
 
       default:
-        error_report("UIC RD: 0x%08lX --> 0x%08lX", uic->iomem.addr + addr, ret);
+        error_report("SER RD: 0x%08lX --> 0x%08lX", ser->iomem.addr + addr, ret);
         break;
     }
 
     return ret;
 }
 
-static void nuc980_uic_write(void *opaque, hwaddr addr, uint64_t value, unsigned size)
+static void nuc980_ser_write(void *opaque, hwaddr addr, uint64_t value, unsigned size)
 {
-    NUC980UICState *uic = opaque;
+    NUC980SERState *ser = opaque;
+    
+    qemu_set_irq(ser->irq, 0);
 
     switch(addr) {
-      case REG_UIC_DAT:
-        nuc980_uic_chardev_write(uic, (const uint8_t *) &value, 1);
+      case REG_SER_DAT:
+        nuc980_ser_chardev_write(ser, (const uint8_t *) &value, 1);
         break;
         
-      case REG_UIC_INTEN:
-        uic->ien = value;
+      case REG_SER_INTEN:
+        ser->ien = value;
         break;
         
-      case REG_UIC_FIFO:
-        uic->fifo_ctl = value;
+      case REG_SER_FIFO:
+        ser->fifo_ctl = value;
         break;
         
-      case REG_UIC_LINE:
-        uic->line_ctl = value;
+      case REG_SER_LINE:
+        ser->line_ctl = value;
         break;
         
-      case REG_UIC_MODEM:
-        uic->modm_ctl = value;
+      case REG_SER_MODEM:
+        ser->modm_ctl = value;
         break;
         
-      case REG_UIC_MODEMSTS:
-        //uic->modm_sts = value;
+      case REG_SER_MODEMSTS:
+        //ser->modm_sts = value;
         break;
         
-      case REG_UIC_FIFOSTS:
-        //uic->fifo_sts = value;
-        break;
-        
-      case REG_UIC_INTSTS:
-        //uic->intr_sts = value;
-        qemu_set_irq(uic->irq, 0);
+      case REG_SER_FIFOSTS:
+        //ser->fifo_sts = value;
         break;
 
-      case REG_UIC_BAUD:
-        uic->baud = value;
+      case REG_SER_INTSTS:
+        ser->intr_sts &= ~value;
+        break;
+
+      case REG_SER_TOUT:
+        break;
+
+      case REG_SER_BAUD:
+        ser->baud = value;
         break;
 
       default:
-        error_report("UIC WR: 0x%08lX <-- 0x%08lX", uic->iomem.addr + addr, value);
+        error_report("SER WR: 0x%08lX <-- 0x%08lX", ser->iomem.addr + addr, value);
         break;
     }
 }
 
-static void nuc980_uic_instance_init(Object *obj)
+static void nuc980_ser_instance_init(Object *obj)
 {
-    NUC980UICState *uic = NUC980_UIC(obj);
+    NUC980SERState *ser = NUC980_SER(obj);
     
-    static const MemoryRegionOps uic_ops = {
-      .read       = nuc980_uic_read,
-      .write      = nuc980_uic_write,
+    static const MemoryRegionOps ser_ops = {
+      .read       = nuc980_ser_read,
+      .write      = nuc980_ser_write,
       .endianness = DEVICE_NATIVE_ENDIAN,
     };
 
-    memory_region_init_io(&uic->iomem, obj, &uic_ops, uic, "uic", 0x1000);
+    memory_region_init_io(&ser->iomem, obj, &ser_ops, ser, "ser", 0x1000);
 
-    sysbus_init_mmio(SYS_BUS_DEVICE(uic), &uic->iomem);
+    sysbus_init_mmio(SYS_BUS_DEVICE(ser), &ser->iomem);
 }
 
-static void nuc980_uic_class_init(ObjectClass *obj_class, void *data)
+static void nuc980_ser_class_init(ObjectClass *obj_class, void *data)
 {
     DeviceClass *dev_class = DEVICE_CLASS(obj_class);
 
-    dev_class->desc  = "NUC980 UIC Controller";
+    dev_class->desc  = "NUC980 SER Controller";
     dev_class->reset = NULL;
 }
 
-/*------------------------------ UIC TYPE -----------------------------------*/
+/*------------------------------ SER TYPE -----------------------------------*/
 
-static const TypeInfo nuc980_uic_type = {
-    .name          = TYPE_NUC980_UIC,
+static const TypeInfo nuc980_ser_type = {
+    .name          = TYPE_NUC980_SER,
     .parent        = TYPE_SYS_BUS_DEVICE,
-    .instance_size = sizeof(NUC980UICState),
-    .instance_init = nuc980_uic_instance_init,
-    .class_init    = nuc980_uic_class_init,
+    .instance_size = sizeof(NUC980SERState),
+    .instance_init = nuc980_ser_instance_init,
+    .class_init    = nuc980_ser_class_init,
+};
+
+/*****************************************************************************/
+/*                               PDMA DRIVER                                 */
+/*****************************************************************************/
+
+/*---------------------------- DMA MODULE NAME ------------------------------*/
+
+#define TYPE_NUC980_DMA "nuc980-dma"
+
+/*---------------------------- DMA DATATYPES --------------------------------*/
+
+OBJECT_DECLARE_SIMPLE_TYPE(NUC980DMAState, NUC980_DMA)
+
+struct NUC980DMAState {
+    SysBusDevice  parent_obj;
+    MemoryRegion  iomem;
+    qemu_irq      irq[2];
+};
+
+/*----------------------------- DMA FUNCTIONS -------------------------------*/
+
+static uint64_t nuc980_dma_read(void *opaque, hwaddr addr, unsigned size)
+{
+    NUC980DMAState *dma = opaque;
+    uint64_t        ret = 0;
+
+    switch(addr) {
+      default:
+        break;
+    }
+        error_report("DMA RD: 0x%08lX --> 0x%08lX", dma->iomem.addr + addr, ret);
+
+    return ret;
+}
+
+static void nuc980_dma_write(void *opaque, hwaddr addr, uint64_t value, unsigned size)
+{
+    NUC980DMAState *dma = opaque;
+
+    switch(addr) {
+
+      default:
+        break;
+    }
+        error_report("DMA WR: 0x%08lX <-- 0x%08lX", dma->iomem.addr + addr, value);
+}
+
+static void nuc980_dma_instance_init(Object *obj)
+{
+    NUC980DMAState *dma = NUC980_DMA(obj);
+    
+    static const MemoryRegionOps dma_ops = {
+      .read       = nuc980_dma_read,
+      .write      = nuc980_dma_write,
+      .endianness = DEVICE_NATIVE_ENDIAN,
+    };
+
+    memory_region_init_io(&dma->iomem, obj, &dma_ops, dma, "dma", 0x1000);
+
+    sysbus_init_mmio(SYS_BUS_DEVICE(dma), &dma->iomem);
+}
+
+static void nuc980_dma_class_init(ObjectClass *obj_class, void *data)
+{
+    DeviceClass *dev_class = DEVICE_CLASS(obj_class);
+
+    dev_class->desc  = "NUC980 DMA Controller";
+    dev_class->reset = NULL;
+}
+
+/*------------------------------ DMA TYPE -----------------------------------*/
+
+static const TypeInfo nuc980_dma_type = {
+    .name          = TYPE_NUC980_DMA,
+    .parent        = TYPE_SYS_BUS_DEVICE,
+    .instance_size = sizeof(NUC980DMAState),
+    .instance_init = nuc980_dma_instance_init,
+    .class_init    = nuc980_dma_class_init,
 };
 
 /*****************************************************************************/
 /*                                BOARD DRIVER                               */
 /*****************************************************************************/
 
-/*------------------------------- SOC MACROS --------------------------------*/
+/*----------------------------- SOC MODULE NAME -----------------------------*/
 
 #define TYPE_NUC980_SOC      MACHINE_TYPE_NAME("nuc980-soc")
 
@@ -1556,24 +2166,24 @@ static void nuc980_soc_instance_init(MachineState *machine)
 {
     Object         *cpu       = NULL;
     MemoryRegion   *mem       = get_system_memory();
-    qemu_irq        pic[64]   = {0};
-    qemu_irq        irq       = {0};
-    qemu_irq        fiq       = {0};
+    qemu_irq        irq[64]   = {0};
     NUC980SYSState *sys       = NULL;
     NUC980CLKState *clk       = NULL;
     NUC980SDRState *sdr       = NULL;
+    NUC980ETHState *eth[2]    = {0};
+    NUC980USBState *usb       = NULL;
     NUC980FMIState *fmi       = NULL;
-    NUC980AICState *aic       = NULL;
+    NUC980PICState *pic       = NULL;
+    NUC980GPIState *gpi[7]    = {0};
     NUC980RTCState *rtc       = NULL;
     NUC980TMRState *tmr[6]    = {0};
     NUC980SPIState *spi[3]    = {0};
-    NUC980UICState *uic[10]   = {0};
+    NUC980SERState *ser[10]   = {0};
+    NUC980DMAState *dma       = NULL;
 
     /* allocate new CPU */
     cpu = object_new("arm926-arm-cpu");
     qdev_realize(DEVICE(cpu), NULL, &error_fatal);
-    irq = qdev_get_gpio_in(DEVICE(cpu), ARM_CPU_IRQ);
-    fiq = qdev_get_gpio_in(DEVICE(cpu), ARM_CPU_FIQ);
 
     /* SYS Controller */
     sys = NUC980_SYS(object_new(TYPE_NUC980_SYS));
@@ -1589,84 +2199,132 @@ static void nuc980_soc_instance_init(MachineState *machine)
     memory_region_add_subregion(mem, 0xBC000000, &sdr->bootram);
     memory_region_add_subregion(mem, 0xB0002000, &sdr->iomem);
 
+    /* PIC */
+    pic = NUC980_PIC(object_new(TYPE_NUC980_PIC));
+    memory_region_add_subregion(mem, 0xB0042000, &pic->iomem);
+    irq[ 0] = qdev_get_gpio_in(DEVICE(pic),  0);
+    irq[ 1] = qdev_get_gpio_in(DEVICE(pic),  1);
+    irq[ 2] = qdev_get_gpio_in(DEVICE(pic),  2);
+    irq[ 3] = qdev_get_gpio_in(DEVICE(pic),  3);
+    irq[ 4] = qdev_get_gpio_in(DEVICE(pic),  4);
+    irq[ 5] = qdev_get_gpio_in(DEVICE(pic),  5);
+    irq[ 6] = qdev_get_gpio_in(DEVICE(pic),  6);
+    irq[ 7] = qdev_get_gpio_in(DEVICE(pic),  7);
+    irq[ 8] = qdev_get_gpio_in(DEVICE(pic),  8);
+    irq[ 9] = qdev_get_gpio_in(DEVICE(pic),  9);
+    irq[10] = qdev_get_gpio_in(DEVICE(pic), 10);
+    irq[11] = qdev_get_gpio_in(DEVICE(pic), 11);
+    irq[12] = qdev_get_gpio_in(DEVICE(pic), 12);
+    irq[13] = qdev_get_gpio_in(DEVICE(pic), 13);
+    irq[14] = qdev_get_gpio_in(DEVICE(pic), 14);
+    irq[15] = qdev_get_gpio_in(DEVICE(pic), 15);
+    irq[16] = qdev_get_gpio_in(DEVICE(pic), 16);
+    irq[17] = qdev_get_gpio_in(DEVICE(pic), 17);
+    irq[18] = qdev_get_gpio_in(DEVICE(pic), 18);
+    irq[19] = qdev_get_gpio_in(DEVICE(pic), 19);
+    irq[20] = qdev_get_gpio_in(DEVICE(pic), 20);
+    irq[21] = qdev_get_gpio_in(DEVICE(pic), 21);
+    irq[22] = qdev_get_gpio_in(DEVICE(pic), 22);
+    irq[23] = qdev_get_gpio_in(DEVICE(pic), 23);
+    irq[24] = qdev_get_gpio_in(DEVICE(pic), 24);
+    irq[25] = qdev_get_gpio_in(DEVICE(pic), 25);
+    irq[26] = qdev_get_gpio_in(DEVICE(pic), 26);
+    irq[27] = qdev_get_gpio_in(DEVICE(pic), 27);
+    irq[28] = qdev_get_gpio_in(DEVICE(pic), 28);
+    irq[29] = qdev_get_gpio_in(DEVICE(pic), 29);
+    irq[30] = qdev_get_gpio_in(DEVICE(pic), 30);
+    irq[31] = qdev_get_gpio_in(DEVICE(pic), 31);
+    irq[32] = qdev_get_gpio_in(DEVICE(pic), 32);
+    irq[33] = qdev_get_gpio_in(DEVICE(pic), 33);
+    irq[34] = qdev_get_gpio_in(DEVICE(pic), 34);
+    irq[35] = qdev_get_gpio_in(DEVICE(pic), 35);
+    irq[36] = qdev_get_gpio_in(DEVICE(pic), 36);
+    irq[37] = qdev_get_gpio_in(DEVICE(pic), 37);
+    irq[38] = qdev_get_gpio_in(DEVICE(pic), 38);
+    irq[39] = qdev_get_gpio_in(DEVICE(pic), 39);
+    irq[40] = qdev_get_gpio_in(DEVICE(pic), 40);
+    irq[41] = qdev_get_gpio_in(DEVICE(pic), 41);
+    irq[42] = qdev_get_gpio_in(DEVICE(pic), 42);
+    irq[43] = qdev_get_gpio_in(DEVICE(pic), 43);
+    irq[44] = qdev_get_gpio_in(DEVICE(pic), 44);
+    irq[45] = qdev_get_gpio_in(DEVICE(pic), 45);
+    irq[46] = qdev_get_gpio_in(DEVICE(pic), 46);
+    irq[47] = qdev_get_gpio_in(DEVICE(pic), 47);
+    irq[48] = qdev_get_gpio_in(DEVICE(pic), 48);
+    irq[49] = qdev_get_gpio_in(DEVICE(pic), 49);
+    irq[50] = qdev_get_gpio_in(DEVICE(pic), 50);
+    irq[51] = qdev_get_gpio_in(DEVICE(pic), 51);
+    irq[52] = qdev_get_gpio_in(DEVICE(pic), 52);
+    irq[53] = qdev_get_gpio_in(DEVICE(pic), 53);
+    irq[54] = qdev_get_gpio_in(DEVICE(pic), 54);
+    irq[55] = qdev_get_gpio_in(DEVICE(pic), 55);
+    irq[56] = qdev_get_gpio_in(DEVICE(pic), 56);
+    irq[57] = qdev_get_gpio_in(DEVICE(pic), 57);
+    irq[58] = qdev_get_gpio_in(DEVICE(pic), 58);
+    irq[59] = qdev_get_gpio_in(DEVICE(pic), 59);
+    irq[60] = qdev_get_gpio_in(DEVICE(pic), 60);
+    irq[61] = qdev_get_gpio_in(DEVICE(pic), 61);
+    irq[62] = qdev_get_gpio_in(DEVICE(pic), 62);
+    irq[63] = qdev_get_gpio_in(DEVICE(pic), 63);
+    qdev_connect_gpio_out(DEVICE(pic), 0, qdev_get_gpio_in(DEVICE(cpu), ARM_CPU_IRQ));
+    qdev_connect_gpio_out(DEVICE(pic), 1, qdev_get_gpio_in(DEVICE(cpu), ARM_CPU_FIQ));
+
+    /* GPIO Controller */
+    gpi[0] = NUC980_GPI(object_new(TYPE_NUC980_GPI));
+    gpi[1] = NUC980_GPI(object_new(TYPE_NUC980_GPI));
+    gpi[2] = NUC980_GPI(object_new(TYPE_NUC980_GPI));
+    gpi[3] = NUC980_GPI(object_new(TYPE_NUC980_GPI));
+    gpi[4] = NUC980_GPI(object_new(TYPE_NUC980_GPI));
+    gpi[5] = NUC980_GPI(object_new(TYPE_NUC980_GPI));
+    gpi[6] = NUC980_GPI(object_new(TYPE_NUC980_GPI));
+    memory_region_add_subregion(mem, 0xB0004000, &gpi[0]->iomem[0]);
+    memory_region_add_subregion(mem, 0xB0004040, &gpi[1]->iomem[0]);
+    memory_region_add_subregion(mem, 0xB0004080, &gpi[2]->iomem[0]);
+    memory_region_add_subregion(mem, 0xB00040C0, &gpi[3]->iomem[0]);
+    memory_region_add_subregion(mem, 0xB0004100, &gpi[4]->iomem[0]);
+    memory_region_add_subregion(mem, 0xB0004140, &gpi[5]->iomem[0]);
+    memory_region_add_subregion(mem, 0xB0004180, &gpi[6]->iomem[0]);
+    memory_region_add_subregion(mem, 0xB0004800, &gpi[0]->iomem[1]);
+    memory_region_add_subregion(mem, 0xB0004840, &gpi[1]->iomem[1]);
+    memory_region_add_subregion(mem, 0xB0004880, &gpi[2]->iomem[1]);
+    memory_region_add_subregion(mem, 0xB00048C0, &gpi[3]->iomem[1]);
+    memory_region_add_subregion(mem, 0xB0004900, &gpi[4]->iomem[1]);
+    memory_region_add_subregion(mem, 0xB0004940, &gpi[5]->iomem[1]);
+    memory_region_add_subregion(mem, 0xB0004980, &gpi[6]->iomem[1]);
+    gpi[0]->irq = irq[8];
+    gpi[1]->irq = irq[9];
+    gpi[2]->irq = irq[10];
+    gpi[3]->irq = irq[11];
+    gpi[4]->irq = irq[49];
+    gpi[5]->irq = irq[57];
+    gpi[6]->irq = irq[63];
+
+    /* Ethernet */
+    eth[0] = NUC980_ETH(object_new(TYPE_NUC980_ETH));
+    eth[1] = NUC980_ETH(object_new(TYPE_NUC980_ETH));
+    memory_region_add_subregion(mem, 0xB0012000, &eth[0]->iomem);
+    memory_region_add_subregion(mem, 0xB0022000, &eth[1]->iomem);
+    eth[0]->irq[0] = irq[19];
+    eth[1]->irq[1] = irq[20];
+    eth[0]->irq[0] = irq[21];
+    eth[1]->irq[1] = irq[22];
+
+    /* USB */
+    usb = NUC980_USB(object_new(TYPE_NUC980_USB));
+    memory_region_add_subregion(mem, 0xB0015000, &usb->iomem[0]);
+    memory_region_add_subregion(mem, 0xB0017000, &usb->iomem[1]);
+    usb->irq[0] = irq[23];
+    usb->irq[1] = irq[24];
+
     /* FMI */
     fmi = NUC980_FMI(object_new(TYPE_NUC980_FMI));
     memory_region_add_subregion(mem, 0xB0019000, &fmi->iomem);
-
-    /* AIC */
-    aic = NUC980_AIC(object_new(TYPE_NUC980_AIC));
-    memory_region_add_subregion(mem, 0xB0042000, &aic->iomem);
-    pic[ 0] = qdev_get_gpio_in(DEVICE(aic),  0);
-    pic[ 1] = qdev_get_gpio_in(DEVICE(aic),  1);
-    pic[ 2] = qdev_get_gpio_in(DEVICE(aic),  2);
-    pic[ 3] = qdev_get_gpio_in(DEVICE(aic),  3);
-    pic[ 4] = qdev_get_gpio_in(DEVICE(aic),  4);
-    pic[ 5] = qdev_get_gpio_in(DEVICE(aic),  5);
-    pic[ 6] = qdev_get_gpio_in(DEVICE(aic),  6);
-    pic[ 7] = qdev_get_gpio_in(DEVICE(aic),  7);
-    pic[ 8] = qdev_get_gpio_in(DEVICE(aic),  8);
-    pic[ 9] = qdev_get_gpio_in(DEVICE(aic),  9);
-    pic[10] = qdev_get_gpio_in(DEVICE(aic), 10);
-    pic[11] = qdev_get_gpio_in(DEVICE(aic), 11);
-    pic[12] = qdev_get_gpio_in(DEVICE(aic), 12);
-    pic[13] = qdev_get_gpio_in(DEVICE(aic), 13);
-    pic[14] = qdev_get_gpio_in(DEVICE(aic), 14);
-    pic[15] = qdev_get_gpio_in(DEVICE(aic), 15);
-    pic[16] = qdev_get_gpio_in(DEVICE(aic), 16);
-    pic[17] = qdev_get_gpio_in(DEVICE(aic), 17);
-    pic[18] = qdev_get_gpio_in(DEVICE(aic), 18);
-    pic[19] = qdev_get_gpio_in(DEVICE(aic), 19);
-    pic[20] = qdev_get_gpio_in(DEVICE(aic), 20);
-    pic[21] = qdev_get_gpio_in(DEVICE(aic), 21);
-    pic[22] = qdev_get_gpio_in(DEVICE(aic), 22);
-    pic[23] = qdev_get_gpio_in(DEVICE(aic), 23);
-    pic[24] = qdev_get_gpio_in(DEVICE(aic), 24);
-    pic[25] = qdev_get_gpio_in(DEVICE(aic), 25);
-    pic[26] = qdev_get_gpio_in(DEVICE(aic), 26);
-    pic[27] = qdev_get_gpio_in(DEVICE(aic), 27);
-    pic[28] = qdev_get_gpio_in(DEVICE(aic), 28);
-    pic[29] = qdev_get_gpio_in(DEVICE(aic), 29);
-    pic[30] = qdev_get_gpio_in(DEVICE(aic), 30);
-    pic[31] = qdev_get_gpio_in(DEVICE(aic), 31);
-    pic[32] = qdev_get_gpio_in(DEVICE(aic), 32);
-    pic[33] = qdev_get_gpio_in(DEVICE(aic), 33);
-    pic[34] = qdev_get_gpio_in(DEVICE(aic), 34);
-    pic[35] = qdev_get_gpio_in(DEVICE(aic), 35);
-    pic[36] = qdev_get_gpio_in(DEVICE(aic), 36);
-    pic[37] = qdev_get_gpio_in(DEVICE(aic), 37);
-    pic[38] = qdev_get_gpio_in(DEVICE(aic), 38);
-    pic[39] = qdev_get_gpio_in(DEVICE(aic), 39);
-    pic[40] = qdev_get_gpio_in(DEVICE(aic), 40);
-    pic[41] = qdev_get_gpio_in(DEVICE(aic), 41);
-    pic[42] = qdev_get_gpio_in(DEVICE(aic), 42);
-    pic[43] = qdev_get_gpio_in(DEVICE(aic), 43);
-    pic[44] = qdev_get_gpio_in(DEVICE(aic), 44);
-    pic[45] = qdev_get_gpio_in(DEVICE(aic), 45);
-    pic[46] = qdev_get_gpio_in(DEVICE(aic), 46);
-    pic[47] = qdev_get_gpio_in(DEVICE(aic), 47);
-    pic[48] = qdev_get_gpio_in(DEVICE(aic), 48);
-    pic[49] = qdev_get_gpio_in(DEVICE(aic), 49);
-    pic[50] = qdev_get_gpio_in(DEVICE(aic), 50);
-    pic[51] = qdev_get_gpio_in(DEVICE(aic), 51);
-    pic[52] = qdev_get_gpio_in(DEVICE(aic), 52);
-    pic[53] = qdev_get_gpio_in(DEVICE(aic), 53);
-    pic[54] = qdev_get_gpio_in(DEVICE(aic), 54);
-    pic[55] = qdev_get_gpio_in(DEVICE(aic), 55);
-    pic[56] = qdev_get_gpio_in(DEVICE(aic), 56);
-    pic[57] = qdev_get_gpio_in(DEVICE(aic), 57);
-    pic[58] = qdev_get_gpio_in(DEVICE(aic), 58);
-    pic[59] = qdev_get_gpio_in(DEVICE(aic), 59);
-    pic[60] = qdev_get_gpio_in(DEVICE(aic), 60);
-    pic[61] = qdev_get_gpio_in(DEVICE(aic), 61);
-    pic[62] = qdev_get_gpio_in(DEVICE(aic), 62);
-    pic[63] = qdev_get_gpio_in(DEVICE(aic), 63);
-    qdev_connect_gpio_out(DEVICE(aic), 0, irq);
-    qdev_connect_gpio_out(DEVICE(aic), 1, fiq);
+    fmi->irq = irq[28];
 
     /* RTC Controller */
     rtc = NUC980_RTC(object_new(TYPE_NUC980_RTC));
     memory_region_add_subregion(mem, 0xB0041000, &rtc->iomem);
-    rtc->irq = pic[15];
+    rtc->irq = irq[15];
 
     /* Timers */
     tmr[0] = NUC980_TMR(object_new(TYPE_NUC980_TMR));
@@ -1681,12 +2339,12 @@ static void nuc980_soc_instance_init(MachineState *machine)
     memory_region_add_subregion(mem, 0xB0051100, &tmr[3]->iomem);
     memory_region_add_subregion(mem, 0xB0052000, &tmr[4]->iomem);
     memory_region_add_subregion(mem, 0xB0052100, &tmr[5]->iomem);
-    tmr[0]->irq = pic[16];
-    tmr[1]->irq = pic[17];
-    tmr[2]->irq = pic[30];
-    tmr[3]->irq = pic[31];
-    tmr[4]->irq = pic[32];
-    tmr[5]->irq = pic[34];
+    tmr[0]->irq = irq[16];
+    tmr[1]->irq = irq[17];
+    tmr[2]->irq = irq[30];
+    tmr[3]->irq = irq[31];
+    tmr[4]->irq = irq[32];
+    tmr[5]->irq = irq[34];
 
     /* SPIs */
     spi[0] = NUC980_SPI(object_new(TYPE_NUC980_SPI));
@@ -1697,37 +2355,43 @@ static void nuc980_soc_instance_init(MachineState *machine)
     memory_region_add_subregion(mem, 0xB0062000, &spi[2]->iomem);
 
     /* UARTs */
-    uic[0] = NUC980_UIC(object_new(TYPE_NUC980_UIC));
-    uic[1] = NUC980_UIC(object_new(TYPE_NUC980_UIC));
-    uic[2] = NUC980_UIC(object_new(TYPE_NUC980_UIC));
-    uic[3] = NUC980_UIC(object_new(TYPE_NUC980_UIC));
-    uic[4] = NUC980_UIC(object_new(TYPE_NUC980_UIC));
-    uic[5] = NUC980_UIC(object_new(TYPE_NUC980_UIC));
-    uic[6] = NUC980_UIC(object_new(TYPE_NUC980_UIC));
-    uic[7] = NUC980_UIC(object_new(TYPE_NUC980_UIC));
-    uic[8] = NUC980_UIC(object_new(TYPE_NUC980_UIC));
-    uic[9] = NUC980_UIC(object_new(TYPE_NUC980_UIC));
-    nuc980_uic_chardev_attach(uic[0], serial_hd(0));
-    nuc980_uic_chardev_attach(uic[1], serial_hd(1));
-    nuc980_uic_chardev_attach(uic[2], serial_hd(2));
-    nuc980_uic_chardev_attach(uic[3], serial_hd(3));
-    nuc980_uic_chardev_attach(uic[4], serial_hd(4));
-    nuc980_uic_chardev_attach(uic[5], serial_hd(5));
-    nuc980_uic_chardev_attach(uic[6], serial_hd(6));
-    nuc980_uic_chardev_attach(uic[7], serial_hd(7));
-    nuc980_uic_chardev_attach(uic[8], serial_hd(8));
-    nuc980_uic_chardev_attach(uic[9], serial_hd(9));
-    memory_region_add_subregion(mem, 0xB0070000, &uic[0]->iomem);
-    memory_region_add_subregion(mem, 0xB0071000, &uic[1]->iomem);
-    memory_region_add_subregion(mem, 0xB0072000, &uic[2]->iomem);
-    memory_region_add_subregion(mem, 0xB0073000, &uic[3]->iomem);
-    memory_region_add_subregion(mem, 0xB0074000, &uic[4]->iomem);
-    memory_region_add_subregion(mem, 0xB0075000, &uic[5]->iomem);
-    memory_region_add_subregion(mem, 0xB0076000, &uic[6]->iomem);
-    memory_region_add_subregion(mem, 0xB0077000, &uic[7]->iomem);
-    memory_region_add_subregion(mem, 0xB0078000, &uic[8]->iomem);
-    memory_region_add_subregion(mem, 0xB0079000, &uic[9]->iomem);
-    uic[0]->irq = pic[36];
+    ser[0] = NUC980_SER(object_new(TYPE_NUC980_SER));
+    ser[1] = NUC980_SER(object_new(TYPE_NUC980_SER));
+    ser[2] = NUC980_SER(object_new(TYPE_NUC980_SER));
+    ser[3] = NUC980_SER(object_new(TYPE_NUC980_SER));
+    ser[4] = NUC980_SER(object_new(TYPE_NUC980_SER));
+    ser[5] = NUC980_SER(object_new(TYPE_NUC980_SER));
+    ser[6] = NUC980_SER(object_new(TYPE_NUC980_SER));
+    ser[7] = NUC980_SER(object_new(TYPE_NUC980_SER));
+    ser[8] = NUC980_SER(object_new(TYPE_NUC980_SER));
+    ser[9] = NUC980_SER(object_new(TYPE_NUC980_SER));
+    nuc980_ser_chardev_attach(ser[0], serial_hd(0));
+    nuc980_ser_chardev_attach(ser[1], serial_hd(1));
+    nuc980_ser_chardev_attach(ser[2], serial_hd(2));
+    nuc980_ser_chardev_attach(ser[3], serial_hd(3));
+    nuc980_ser_chardev_attach(ser[4], serial_hd(4));
+    nuc980_ser_chardev_attach(ser[5], serial_hd(5));
+    nuc980_ser_chardev_attach(ser[6], serial_hd(6));
+    nuc980_ser_chardev_attach(ser[7], serial_hd(7));
+    nuc980_ser_chardev_attach(ser[8], serial_hd(8));
+    nuc980_ser_chardev_attach(ser[9], serial_hd(9));
+    memory_region_add_subregion(mem, 0xB0070000, &ser[0]->iomem);
+    memory_region_add_subregion(mem, 0xB0071000, &ser[1]->iomem);
+    memory_region_add_subregion(mem, 0xB0072000, &ser[2]->iomem);
+    memory_region_add_subregion(mem, 0xB0073000, &ser[3]->iomem);
+    memory_region_add_subregion(mem, 0xB0074000, &ser[4]->iomem);
+    memory_region_add_subregion(mem, 0xB0075000, &ser[5]->iomem);
+    memory_region_add_subregion(mem, 0xB0076000, &ser[6]->iomem);
+    memory_region_add_subregion(mem, 0xB0077000, &ser[7]->iomem);
+    memory_region_add_subregion(mem, 0xB0078000, &ser[8]->iomem);
+    memory_region_add_subregion(mem, 0xB0079000, &ser[9]->iomem);
+    ser[0]->irq = irq[36];
+
+    /* PDMA */
+    dma = NUC980_DMA(object_new(TYPE_NUC980_DMA));
+    memory_region_add_subregion(mem, 0xB0080000, &dma->iomem);
+    dma->irq[0] = irq[25];
+    dma->irq[1] = irq[26];
 
     /* load boot flash from file */
     nuc980_soc_ldflash(machine);
@@ -1740,9 +2404,6 @@ static void nuc980_soc_class_init(ObjectClass *obj_class, void *data)
     machine_class->desc     = "Nuvoton NUC980 SoC (ARM926EJ-S)";
     machine_class->reset    = nuc980_soc_reset;
     machine_class->init     = nuc980_soc_instance_init;
-    
-    /* FIXME */
-    machine_class->ignore_memory_transaction_failures = true;
 }
 
 /*------------------------------ SOC TYPE -----------------------------------*/
@@ -1762,12 +2423,16 @@ static void nuc980_register_types(void)
     type_register_static(&nuc980_sys_type);
     type_register_static(&nuc980_clk_type);
     type_register_static(&nuc980_sdr_type);
+    type_register_static(&nuc980_pic_type);
+    type_register_static(&nuc980_gpi_type);
+    type_register_static(&nuc980_eth_type);
+    type_register_static(&nuc980_usb_type);
     type_register_static(&nuc980_fmi_type);
-    type_register_static(&nuc980_aic_type);
     type_register_static(&nuc980_rtc_type);
     type_register_static(&nuc980_tmr_type);
     type_register_static(&nuc980_spi_type);
-    type_register_static(&nuc980_uic_type);
+    type_register_static(&nuc980_ser_type);
+    type_register_static(&nuc980_dma_type);
     type_register_static(&nuc980_soc_type);
 }
 
