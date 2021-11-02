@@ -587,32 +587,26 @@ static void nuc980_pic_write(void *opaque, hwaddr addr, uint64_t value, unsigned
     switch(addr) {
       case REG_PIC_IE0:
         pic->int_ien = (pic->int_ien & 0xFFFFFFFF00000000ULL) | (value<< 0);
-        pic->int_sts &= pic->int_ien;
         break;
 
       case REG_PIC_IE1:
         pic->int_ien = (pic->int_ien & 0x00000000FFFFFFFFULL) | (value<<32);
-        pic->int_sts &= pic->int_ien;
         break;
 
       case REG_PIC_IEN0:
         pic->int_ien |= (value<< 0);
-        pic->int_sts &= pic->int_ien;
         break;
 
       case REG_PIC_IEN1:
         pic->int_ien |= (value<<32);
-        pic->int_sts &= pic->int_ien;
         break;
 
       case REG_PIC_IDIS0:
         pic->int_ien &= ~(value<< 0);
-        pic->int_sts &= pic->int_ien;
         break;
 
       case REG_PIC_IDIS1:
         pic->int_ien &= ~(value<<32);
-        pic->int_sts &= pic->int_ien;
         break;
 
       case REG_PIC_IRQRST:  
@@ -1589,7 +1583,7 @@ static void nuc980_tmr_cb(void *opaque)
       }
     }
 
-    timer_mod(tmr->ts, qemu_clock_get_ns(QEMU_CLOCK_REALTIME) + 10000);
+    timer_mod(tmr->ts, qemu_clock_get_ns(QEMU_CLOCK_REALTIME) + 500*(tmr->pre+1));
 }
 
 static uint64_t nuc980_tmr_read(void *opaque, hwaddr addr, unsigned size)
@@ -1843,11 +1837,10 @@ static void nuc980_ser_chardev_read(void *opaque, const uint8_t *buf, int size)
     ser->rx_avail = true;
     ser->rx_data  = buf[0];
 
-    if (ser->ien) {
+    if (ser->ien & 1) {
       qemu_set_irq(ser->irq, 1);
+      ser->intr_sts |= 1;
     }
-
-    ser->intr_sts |= 1;
 }
 
 static void nuc980_ser_chardev_write(void *opaque, const uint8_t *buf, int size)
@@ -1856,11 +1849,10 @@ static void nuc980_ser_chardev_write(void *opaque, const uint8_t *buf, int size)
 
     qemu_chr_fe_write(&ser->be, buf, size);
     
-    if (ser->ien) {
+    if (ser->ien & 2) {
       qemu_set_irq(ser->irq, 1);
+      ser->intr_sts |= 2;
     }
-
-    ser->intr_sts |= 2;
 }
 
 static void nuc980_ser_chardev_event(void *opaque, QEMUChrEvent event)
@@ -1888,14 +1880,15 @@ static uint64_t nuc980_ser_read(void *opaque, hwaddr addr, unsigned size)
 {
     NUC980SERState *ser = opaque;
     uint64_t        ret = 0;
-    
-    qemu_set_irq(ser->irq, 0);
 
     switch(addr) {
       case REG_SER_DAT:
         ret = ser->rx_data;
         ser->rx_avail = false;
-        ser->intr_sts &= ~1;
+        if (ser->intr_sts & 1) {
+          ser->intr_sts &= ~1;
+          qemu_set_irq(ser->irq, 0);
+        }
         break;
         
       case REG_SER_INTEN:
@@ -1924,6 +1917,18 @@ static uint64_t nuc980_ser_read(void *opaque, hwaddr addr, unsigned size)
         if (!ser->rx_avail) {
           ret |= (1<<14); // RXEMPTY
         }
+        // FIXME: there is a possible bug in the NUC980 UART Linux
+        //        device driver (drivers/tty/serial/nuc980_serial.c)
+        //        in function nuc980serial_start_tx(). By the end
+        //        of the function, the driver uses this if test:
+        //           uart_circ_chars_pending(xmit)<(16-((serial_in(up, UART_REG_FSR)>>16)&0x3F)
+        //        which, uart_circ_chars_pending() is too big, 
+        //        needs bits 4&7 of TXPTR to be set to 1, so that 
+        //        serial_in(up, UART_REG_FSR)>>16)&0x3F evaluates to 0x30 or 0x20
+        //        at least, and then 16-0x30 will yield in a negative value treated
+        //        as unsugned, then uart_circ_chars_pending(xmit) will work
+        //        in that case.
+        ret |= 0x300000;
         break;
 
       case REG_SER_INTSTS:
@@ -1948,8 +1953,6 @@ static uint64_t nuc980_ser_read(void *opaque, hwaddr addr, unsigned size)
 static void nuc980_ser_write(void *opaque, hwaddr addr, uint64_t value, unsigned size)
 {
     NUC980SERState *ser = opaque;
-    
-    qemu_set_irq(ser->irq, 0);
 
     switch(addr) {
       case REG_SER_DAT:
@@ -1981,6 +1984,9 @@ static void nuc980_ser_write(void *opaque, hwaddr addr, uint64_t value, unsigned
         break;
 
       case REG_SER_INTSTS:
+        if ((ser->intr_sts & 2) && (value & 2)) {
+          qemu_set_irq(ser->irq, 0);
+        }
         ser->intr_sts &= ~value;
         break;
 
