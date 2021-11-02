@@ -798,7 +798,8 @@ static void nuc980_pic_irq(void *opaque, int irq, int level)
     if (level == 0) {
       pic->int_sts &= ~(1UL<<irq);
     } else {
-      pic->int_sts |= (1UL<<irq) & pic->int_ien;
+      // FIXME: when timer counter is too small, something missy happens
+      pic->int_sts |= (1UL<<irq); //& pic->int_ien;
     }
     //printf("IRQ: %d %d 0x%016lX 0x%016lX\n", irq, level, pic->int_sts, pic->int_ien);
 
@@ -1717,7 +1718,7 @@ struct NUC980RTCState {
 static void nuc980_rtc_cb(void *opaque)
 {
     NUC980RTCState *rtc = opaque;
-    
+#if 0
     if (rtc->tick_cnt == 100) {
       //qemu_set_irq(rtc->irq, 1);
       rtc->tick_cnt = 0;
@@ -1728,8 +1729,8 @@ static void nuc980_rtc_cb(void *opaque)
     if (rtc->tick_cnt == 10) {
       //qemu_set_irq(rtc->irq, 0);
     }
-
-    timer_mod_ns(rtc->ts, qemu_clock_get_ns(QEMU_CLOCK_REALTIME)+10000);
+#endif
+    timer_mod_ns(rtc->ts, qemu_clock_get_ns(QEMU_CLOCK_REALTIME)+100000);
 }
 
 
@@ -1838,22 +1839,16 @@ static void nuc980_tmr_cb(void *opaque)
     NUC980TMRState *tmr    = opaque;
     uint64_t        period = 0;
 
-    /* RESET */
-    if (tmr->ctl & 2) {
-      tmr->ctr = 0;
-      tmr->ctl &= ~2;
-      tmr->ctl |= 1;
-    }
-
     /* COUNTING */
     if (tmr->ctl & 1) {
-      tmr->ctr+=10;
+      tmr->ctr+=1000;
       if (tmr->ctr >= tmr->cmp) {
         tmr->ctr = tmr->cmp;
       }
       //if (tmr->cmp < 0xFFFFF)
       //  printf("counter: 0x%016lX 0x%016lX 0x%02X 0x%02X\n", tmr->ctr, tmr->cmp, tmr->ctl, tmr->ien);
       if (tmr->ctr == tmr->cmp) {
+        //printf("COUNTED %d!\n", tmr->ien);
         if (((tmr->ctl>>4)&3) == 0) {
           tmr->ctl &= ~3;
         }
@@ -1870,7 +1865,7 @@ static void nuc980_tmr_cb(void *opaque)
     } else {
       period = 1000000000UL / clock_get_hz(tmr->clk);
       period *= (tmr->pre&0xFF)+1;
-      period *= 10;
+      period *= 1000;
     }
 
     timer_mod(tmr->ts, qemu_clock_get_ns(QEMU_CLOCK_REALTIME)+period);
@@ -1912,7 +1907,13 @@ static void nuc980_tmr_write(void *opaque, hwaddr addr, uint64_t value, unsigned
 
     switch(addr) {
       case REG_TMR_CTL:
+        //printf("COUNT FOR %ld %lX %ld\n", tmr->cmp, value, tmr->ctr);
         tmr->ctl = value;
+        if (tmr->ctl & 2) {
+          tmr->ctr = 0;
+          tmr->ctl &= ~2;
+          tmr->ctl |= 1;
+        }
         break;
 
       case REG_TMR_PRECNT:
@@ -1926,6 +1927,7 @@ static void nuc980_tmr_write(void *opaque, hwaddr addr, uint64_t value, unsigned
       case REG_TMR_CMP:
         tmr->ctl &= ~3;
         tmr->cmp = (value) & 0xFFFFFF;
+        tmr->ctr = 0;
         tmr->ctl |= 2;
         break;
 
@@ -2451,7 +2453,7 @@ static void nuc980_soc_reset(MachineState *machine)
 
 static void nuc980_soc_instance_init(MachineState *machine)
 {
-    Object         *cpu       = NULL;
+    ARMCPU         *cpu       = NULL;
     MemoryRegion   *mem       = get_system_memory();
     qemu_irq        irq[64]   = {0};
     NUC980SYSState *sys       = NULL;
@@ -2469,7 +2471,7 @@ static void nuc980_soc_instance_init(MachineState *machine)
     NUC980DMAState *dma       = NULL;
 
     /* allocate new CPU */
-    cpu = object_new("arm926-arm-cpu");
+    cpu = ARM_CPU(object_new("arm926-arm-cpu"));
     qdev_realize(DEVICE(cpu), NULL, &error_fatal);
 
     /* SYS Controller */
