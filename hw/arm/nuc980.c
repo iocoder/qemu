@@ -15,6 +15,7 @@
 #include "qom/object.h"
 #include "cpu.h"
 #include "sysemu/sysemu.h"
+#include "hw/clock.h"
 #include "hw/boards.h"
 #include "hw/sysbus.h"
 #include "hw/irq.h"
@@ -264,6 +265,24 @@ static const TypeInfo nuc980_sys_type = {
 
 #define TYPE_NUC980_CLK "nuc980-clk"
 
+#define REG_CLK_PMCON       0x000
+#define REG_CLK_HCLKEN      0x010
+#define REG_CLK_PCLKEN0     0x018
+#define REG_CLK_PCLKEN1     0x01C
+#define REG_CLK_DIVCTL0     0x020
+#define REG_CLK_DIVCTL1     0x024
+#define REG_CLK_DIVCTL2     0x028
+#define REG_CLK_DIVCTL3     0x02C
+#define REG_CLK_DIVCTL4     0x030
+#define REG_CLK_DIVCTL5     0x034
+#define REG_CLK_DIVCTL6     0x038
+#define REG_CLK_DIVCTL7     0x03C
+#define REG_CLK_DIVCTL8     0x040
+#define REG_CLK_DIVCTL9     0x044
+#define REG_CLK_APLLCON     0x060
+#define REG_CLK_UPLLCON     0x064
+#define REG_CLK_PLLSTBC     0x080
+
 /*---------------------------- CLK DATATYPES --------------------------------*/
 
 OBJECT_DECLARE_SIMPLE_TYPE(NUC980CLKState, NUC980_CLK)
@@ -271,18 +290,175 @@ OBJECT_DECLARE_SIMPLE_TYPE(NUC980CLKState, NUC980_CLK)
 struct NUC980CLKState {
     SysBusDevice  parent_obj;
     MemoryRegion  iomem;
-    uint32_t      regs[32];
+    uint32_t      reg_pmctl;
+    uint32_t      reg_hclken;
+    uint32_t      reg_pclken[2];
+    uint32_t      reg_divctl[10];
+    uint32_t      reg_pllctl[2];
+    uint32_t      reg_pllstbc;
+    Clock        *clk_xtal[2];
+    Clock        *clk_pll[2];
+    Clock        *clk_sys;
+    Clock        *clk_cpu;
+    Clock        *clk_hclk[5];
+    Clock        *clk_pclk[3];
+    Clock        *clk_timer[6];
 };
 
 /*----------------------------- CLK FUNCTIONS -------------------------------*/
+
+static void nuc980_clk_update(void *opaque)
+{
+    NUC980CLKState *clk = opaque;
+    uint32_t        div = 0;
+    uint32_t        i = 0;
+
+    /* start with external crystal oscillators */
+    clock_set_hz(clk->clk_xtal[0], 12000000);
+    clock_set_hz(clk->clk_xtal[1], 32768);
+    
+    /* compute sysclk */
+    div = ((clk->reg_divctl[0]>>8) & 1) + 1;
+    switch (((clk->reg_divctl[0]>>3) & 3)) {
+      case 0:
+        clock_set_hz(clk->clk_sys, clock_get_hz(clk->clk_xtal[0])/div);
+        break;
+
+      case 1:
+        clock_set_hz(clk->clk_sys, 0);
+        break;
+
+      case 2:
+        clock_set_hz(clk->clk_sys, clock_get_hz(clk->clk_pll[0])/div);
+        break;
+
+      case 3:
+        clock_set_hz(clk->clk_sys, clock_get_hz(clk->clk_pll[1])/div);
+        break;
+        
+      default:
+        break;
+    }
+    
+    /* compute cpuclk */
+    div = ((clk->reg_divctl[0]>>16) & 1) + 1;
+    clock_set_hz(clk->clk_cpu, clock_get_hz(clk->clk_sys)/div);
+    
+    /* compute hclk# */
+    clock_set_hz(clk->clk_hclk[0], clock_get_hz(clk->clk_sys)/2);
+    clock_set_hz(clk->clk_hclk[1], clock_get_hz(clk->clk_sys)/2);
+    clock_set_hz(clk->clk_hclk[2], clock_get_hz(clk->clk_sys)/2);
+    clock_set_hz(clk->clk_hclk[3], clock_get_hz(clk->clk_sys)/2);
+    clock_set_hz(clk->clk_hclk[4], clock_get_hz(clk->clk_sys)/2);
+    
+    /* compute pclk# */
+    clock_set_hz(clk->clk_pclk[0], clock_get_hz(clk->clk_hclk[1])/1);
+    clock_set_hz(clk->clk_pclk[1], clock_get_hz(clk->clk_hclk[1])/1);
+    clock_set_hz(clk->clk_pclk[2], clock_get_hz(clk->clk_hclk[1])/2);
+    
+    /* compute timer# */
+    for (i = 0; i < 6; i++) {
+      switch (((clk->reg_divctl[8]>>(16+i*2)) & 3)) {
+        case 0:
+          clock_set_hz(clk->clk_timer[i], clock_get_hz(clk->clk_xtal[0])/1);
+          break;
+
+        case 1:
+          clock_set_hz(clk->clk_timer[i], clock_get_hz(clk->clk_pclk[0])/1);
+          break;
+
+        case 2:
+          clock_set_hz(clk->clk_timer[i], clock_get_hz(clk->clk_pclk[0])/4096);
+          break;
+
+        case 3:
+          clock_set_hz(clk->clk_timer[i], clock_get_hz(clk->clk_xtal[1])/1);
+          break;
+        
+        default:
+          break;
+      }
+    }
+}
 
 static uint64_t nuc980_clk_read(void *opaque, hwaddr addr, unsigned size)
 {
     NUC980CLKState *clk = opaque;
     uint64_t        ret = 0;
 
-    ret = clk->regs[(addr>>2)&31];
-    //error_report("CLK RD: 0x%08lX --> 0x%08lX", clk->iomem.addr + addr, ret);
+    switch (addr) {
+      case REG_CLK_PMCON:
+        ret = clk->reg_pmctl;
+        break;
+
+      case REG_CLK_HCLKEN:
+        ret = clk->reg_hclken;
+        break;
+
+      case REG_CLK_PCLKEN0:
+        ret = clk->reg_pclken[0];
+        break;
+
+      case REG_CLK_PCLKEN1:
+        ret = clk->reg_pclken[1];
+        break;
+
+      case REG_CLK_DIVCTL0:
+        ret = clk->reg_divctl[0];
+        break;
+
+      case REG_CLK_DIVCTL1:
+        ret = clk->reg_divctl[1];
+        break;
+
+      case REG_CLK_DIVCTL2:
+        ret = clk->reg_divctl[2];
+        break;
+
+      case REG_CLK_DIVCTL3:
+        ret = clk->reg_divctl[3];
+        break;
+
+      case REG_CLK_DIVCTL4:
+        ret = clk->reg_divctl[4];
+        break;
+
+      case REG_CLK_DIVCTL5:
+        ret = clk->reg_divctl[5];
+        break;
+
+      case REG_CLK_DIVCTL6:
+        ret = clk->reg_divctl[6];
+        break;
+
+      case REG_CLK_DIVCTL7:
+        ret = clk->reg_divctl[7];
+        break;
+
+      case REG_CLK_DIVCTL8:
+        ret = clk->reg_divctl[8];
+        break;
+
+      case REG_CLK_DIVCTL9:
+        ret = clk->reg_divctl[9];
+        break;
+
+      case REG_CLK_APLLCON:
+        ret = clk->reg_pllctl[0];
+        break;
+
+      case REG_CLK_UPLLCON:
+        ret = clk->reg_pllctl[1];
+        break;
+
+      case REG_CLK_PLLSTBC:
+        ret = clk->reg_pllstbc;
+        break;
+    
+      default:
+        error_report("CLK RD: 0x%08lX --> 0x%08lX", clk->iomem.addr + addr, ret);
+        break;
+    }
 
     return ret;
 }
@@ -291,8 +467,82 @@ static void nuc980_clk_write(void *opaque, hwaddr addr, uint64_t value, unsigned
 {
     NUC980CLKState *clk = opaque;
 
-    clk->regs[(addr>>2)&31] = value;
-    //error_report("CLK WR: 0x%08lX <-- 0x%08lX", clk->iomem.addr + addr, value);
+    switch (addr) {
+      case REG_CLK_PMCON:
+        clk->reg_pmctl = value;
+        break;
+
+      case REG_CLK_HCLKEN:
+        clk->reg_hclken = value;
+        break;
+
+      case REG_CLK_PCLKEN0:
+        clk->reg_pclken[0] = value;
+        break;
+
+      case REG_CLK_PCLKEN1:
+        clk->reg_pclken[1] = value;
+        break;
+
+      case REG_CLK_DIVCTL0:
+        clk->reg_divctl[0] = value;
+        break;
+
+      case REG_CLK_DIVCTL1:
+        clk->reg_divctl[1] = value;
+        break;
+
+      case REG_CLK_DIVCTL2:
+        clk->reg_divctl[2] = value;
+        break;
+
+      case REG_CLK_DIVCTL3:
+        clk->reg_divctl[3] = value;
+        break;
+
+      case REG_CLK_DIVCTL4:
+        clk->reg_divctl[4] = value;
+        break;
+
+      case REG_CLK_DIVCTL5:
+        clk->reg_divctl[5] = value;
+        break;
+
+      case REG_CLK_DIVCTL6:
+        clk->reg_divctl[6] = value;
+        break;
+
+      case REG_CLK_DIVCTL7:
+        clk->reg_divctl[7] = value;
+        break;
+
+      case REG_CLK_DIVCTL8:
+        clk->reg_divctl[8] = value;
+        break;
+
+      case REG_CLK_DIVCTL9:
+        clk->reg_divctl[9] = value;
+        break;
+
+      case REG_CLK_APLLCON:
+        clk->reg_pllctl[0] = value;
+        break;
+
+      case REG_CLK_UPLLCON:
+        clk->reg_pllctl[1] = value;
+        break;
+
+      case REG_CLK_PLLSTBC:
+        clk->reg_pllstbc = value;
+        break;
+    
+      default:
+        error_report("CLK WR: 0x%08lX <-- 0x%08lX", clk->iomem.addr + addr, value);
+        break;
+    }
+    
+    /* update clocks recursively */
+    nuc980_clk_update(clk);
 }
 
 static void nuc980_clk_instance_init(Object *obj)
@@ -308,6 +558,27 @@ static void nuc980_clk_instance_init(Object *obj)
     memory_region_init_io(&clk->iomem, obj, &clk_ops, clk, "clk", 0x1000);
 
     sysbus_init_mmio(SYS_BUS_DEVICE(clk), &clk->iomem);
+
+    clk->clk_xtal[0] = clock_new(OBJECT(clk), "xtal_12m");
+    clk->clk_xtal[1] = clock_new(OBJECT(clk), "xtal_32k");
+    clk->clk_pll[0]   = clock_new(OBJECT(clk), "pll[0]");
+    clk->clk_pll[1]   = clock_new(OBJECT(clk), "pll[1]");
+    clk->clk_sys      = clock_new(OBJECT(clk), "sys");
+    clk->clk_cpu      = clock_new(OBJECT(clk), "cpu");
+    clk->clk_hclk[0]  = clock_new(OBJECT(clk), "hclk[0]");
+    clk->clk_hclk[1]  = clock_new(OBJECT(clk), "hclk[1]");
+    clk->clk_hclk[2]  = clock_new(OBJECT(clk), "hclk[2]");
+    clk->clk_hclk[3]  = clock_new(OBJECT(clk), "hclk[3]");
+    clk->clk_hclk[4]  = clock_new(OBJECT(clk), "hclk[4]");
+    clk->clk_pclk[0]  = clock_new(OBJECT(clk), "pclk[0]");
+    clk->clk_pclk[1]  = clock_new(OBJECT(clk), "pclk[1]");
+    clk->clk_pclk[2]  = clock_new(OBJECT(clk), "pclk[2]");
+    clk->clk_timer[0] = clock_new(OBJECT(clk), "timer[0]");
+    clk->clk_timer[1] = clock_new(OBJECT(clk), "timer[1]");
+    clk->clk_timer[2] = clock_new(OBJECT(clk), "timer[2]");
+    clk->clk_timer[3] = clock_new(OBJECT(clk), "timer[3]");
+    clk->clk_timer[4] = clock_new(OBJECT(clk), "timer[4]");
+    clk->clk_timer[5] = clock_new(OBJECT(clk), "timer[5]");
 }
 
 static void nuc980_clk_class_init(ObjectClass *obj_class, void *data)
@@ -1438,6 +1709,7 @@ struct NUC980RTCState {
     MemoryRegion  iomem;
     QEMUTimer    *ts;
     qemu_irq      irq;
+    uint32_t      tick_cnt;
 };
 
 /*----------------------------- RTC FUNCTIONS -------------------------------*/
@@ -1445,11 +1717,19 @@ struct NUC980RTCState {
 static void nuc980_rtc_cb(void *opaque)
 {
     NUC980RTCState *rtc = opaque;
+    
+    if (rtc->tick_cnt == 100) {
+      //qemu_set_irq(rtc->irq, 1);
+      rtc->tick_cnt = 0;
+    }
+    
+    rtc->tick_cnt++;
+    
+    if (rtc->tick_cnt == 10) {
+      //qemu_set_irq(rtc->irq, 0);
+    }
 
-    /* RTC interrupt */
-    //qemu_set_irq(rtc->irq, 1);
-
-    timer_mod_ns(rtc->ts, qemu_clock_get_ns(QEMU_CLOCK_VIRTUAL)+10000);
+    timer_mod_ns(rtc->ts, qemu_clock_get_ns(QEMU_CLOCK_REALTIME)+10000);
 }
 
 
@@ -1492,8 +1772,8 @@ static void nuc980_rtc_instance_init(Object *obj)
 
     sysbus_init_mmio(SYS_BUS_DEVICE(rtc), &rtc->iomem);
 
-    rtc->ts = timer_new_ns(QEMU_CLOCK_VIRTUAL, nuc980_rtc_cb, rtc);
-    timer_mod_anticipate_ns(rtc->ts, qemu_clock_get_ns(QEMU_CLOCK_VIRTUAL));
+    rtc->ts = timer_new_ns(QEMU_CLOCK_REALTIME, nuc980_rtc_cb, rtc);
+    timer_mod_anticipate_ns(rtc->ts, qemu_clock_get_ns(QEMU_CLOCK_REALTIME));
 }
 
 static void nuc980_rtc_class_init(ObjectClass *obj_class, void *data)
@@ -1541,6 +1821,7 @@ struct NUC980TMRState {
     SysBusDevice  parent_obj;
     MemoryRegion  iomem;
     qemu_irq      irq;
+    Clock        *clk;
     QEMUTimer    *ts;
     uint32_t      ctl;
     uint32_t      sts;
@@ -1554,7 +1835,8 @@ struct NUC980TMRState {
 
 static void nuc980_tmr_cb(void *opaque)
 {
-    NUC980TMRState *tmr = opaque;
+    NUC980TMRState *tmr    = opaque;
+    uint64_t        period = 0;
 
     /* RESET */
     if (tmr->ctl & 2) {
@@ -1565,25 +1847,33 @@ static void nuc980_tmr_cb(void *opaque)
 
     /* COUNTING */
     if (tmr->ctl & 1) {
-      tmr->ctr+=1;
+      tmr->ctr+=10;
       if (tmr->ctr >= tmr->cmp) {
         tmr->ctr = tmr->cmp;
       }
       //if (tmr->cmp < 0xFFFFF)
       //  printf("counter: 0x%016lX 0x%016lX 0x%02X 0x%02X\n", tmr->ctr, tmr->cmp, tmr->ctl, tmr->ien);
       if (tmr->ctr == tmr->cmp) {
-        tmr->ctr = 0;
         if (((tmr->ctl>>4)&3) == 0) {
           tmr->ctl &= ~3;
         }
+        tmr->ctr = 0;
         tmr->sts |= 1;
         if (tmr->ien & 1) {
           qemu_set_irq(tmr->irq, 1);
         }
       }
     }
+    
+    if (clock_get_hz(tmr->clk) == 0) {
+      period = 1000;
+    } else {
+      period = 1000000000UL / clock_get_hz(tmr->clk);
+      period *= (tmr->pre&0xFF)+1;
+      period *= 10;
+    }
 
-    timer_mod(tmr->ts, qemu_clock_get_ns(QEMU_CLOCK_REALTIME) + 500*(tmr->pre+1));
+    timer_mod(tmr->ts, qemu_clock_get_ns(QEMU_CLOCK_REALTIME)+period);
 }
 
 static uint64_t nuc980_tmr_read(void *opaque, hwaddr addr, unsigned size)
@@ -1634,9 +1924,8 @@ static void nuc980_tmr_write(void *opaque, hwaddr addr, uint64_t value, unsigned
         break;
 
       case REG_TMR_CMP:
-        //printf("COUNT FOR: %ld\n", value);
         tmr->ctl &= ~3;
-        tmr->cmp = value & 0xFFFFFF;
+        tmr->cmp = (value) & 0xFFFFFF;
         tmr->ctl |= 2;
         break;
 
@@ -1848,11 +2137,6 @@ static void nuc980_ser_chardev_write(void *opaque, const uint8_t *buf, int size)
     NUC980SERState *ser = opaque;
 
     qemu_chr_fe_write(&ser->be, buf, size);
-    
-    if (ser->ien & 2) {
-      qemu_set_irq(ser->irq, 1);
-      ser->intr_sts |= 2;
-    }
 }
 
 static void nuc980_ser_chardev_event(void *opaque, QEMUChrEvent event)
@@ -1984,9 +2268,6 @@ static void nuc980_ser_write(void *opaque, hwaddr addr, uint64_t value, unsigned
         break;
 
       case REG_SER_INTSTS:
-        if ((ser->intr_sts & 2) && (value & 2)) {
-          qemu_set_irq(ser->irq, 0);
-        }
         ser->intr_sts &= ~value;
         break;
 
@@ -2351,6 +2632,12 @@ static void nuc980_soc_instance_init(MachineState *machine)
     tmr[3]->irq = irq[31];
     tmr[4]->irq = irq[32];
     tmr[5]->irq = irq[34];
+    tmr[0]->clk = clk->clk_timer[0];
+    tmr[1]->clk = clk->clk_timer[1];
+    tmr[2]->clk = clk->clk_timer[2];
+    tmr[3]->clk = clk->clk_timer[3];
+    tmr[4]->clk = clk->clk_timer[4];
+    tmr[5]->clk = clk->clk_timer[5];
 
     /* SPIs */
     spi[0] = NUC980_SPI(object_new(TYPE_NUC980_SPI));
